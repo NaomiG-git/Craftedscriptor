@@ -1,0 +1,24 @@
+{
+  "name": "craftedscriptor",
+  "version": "1.0.0",
+  "description": "A cloud-powered web application for writers, built with AWS and JavaScript.",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NaomiG-git/Craftedscriptor.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/NaomiG-git/Craftedscriptor/issues"
+  },
+  "homepage": "https://github.com/NaomiG-git/Craftedscriptor#readme",
+  "dependencies": {
+    "aws-amplify": "^6.15.5"
+  }
+}

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - CraftedScriptor</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/aws-amplify@5.0.4/dist/aws-amplify.min.js"></script>
+    <style>
+        body { background-color: #f4f7f9; } /* Ensure body has a background */
+        #app-content { display: none; } /* Hide content by default */
+    </style>
+</head>
+<body>
+    <div id="app-content" class="app-container" style="padding: 40px; width: 100%; max-width: 960px; text-align: left;">
+        <h1>Welcome to Your Dashboard</h1>
+        <button id="logout-button">Logout</button>
+        <hr>
+        <h2>Your Projects</h2>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async ( ) => {
+            const { Amplify } = window;
+            if (!Amplify) {
+                console.error("Amplify library did not load!");
+                return;
+            }
+
+            Amplify.configure({
+                Auth: {
+                    region: "ca-central-1",
+                    userPoolId: "ca-central-1_a4x0lYeXs",
+                    userPoolWebClientId: "20kdgtm873doibgad54frneaut"
+                }
+            });
+
+            const appContent = document.getElementById('app-content');
+            const logoutButton = document.getElementById('logout-button');
+
+            try {
+                const user = await Amplify.Auth.currentAuthenticatedUser();
+                console.log("Success! User is signed in:", user.username);
+                appContent.style.display = 'block';
+            } catch (error) {
+                console.log("User not signed in. Redirecting to login page...");
+                window.location.href = 'index.html';
+            }
+
+            logoutButton.addEventListener('click', async () => {
+                try {
+                    await Amplify.Auth.signOut();
+                    window.location.href = 'index.html';
+                } catch (error) {
+                    console.error('Error signing out: ', error);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
