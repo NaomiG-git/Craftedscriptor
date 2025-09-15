@@ -1,0 +1,4 @@
+{
+  "PDF_URL": "https://8fcufgvt4m.execute-api.ca-central-1.amazonaws.com/export/pdf",
+  "DOCX_URL": "https://8fcufgvt4m.execute-api.ca-central-1.amazonaws.com/export/docx"
+}

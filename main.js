@@ -1,0 +1,772 @@
+import { exportDOCX } from "./export-docx.js";
+import { exportPDF } from "./export-pdf.js";
+import { wireDeleteProject } from "./delete-project.js";
+// main.js – stable build with Delete/Rename Section
+document.addEventListener('DOMContentLoaded', () => {
+  // --- Client-side export libs (provided by script tags) ---
+  const TurndownService = window.TurndownService;
+  const htmlToDocx = window.htmlToDocx; // from html-to-docx.umd.js
+  // ⬇️ ADD: API Gateway base URL (replace with your real URL)
+  const API_BASE = 'https://8fcurfgv4m.execute-api.ca-central-1.amazonaws.com';
+
+
+
+  // --- Elements ---
+  const saveButton = document.getElementById('save-button');
+  const saveStatus = document.getElementById('save-status');
+  const subscribeModal = document.getElementById('subscribe-modal');
+
+
+  const structureList = document.getElementById('book-structure-list');
+  const addSectionButton = document.getElementById('add-section-button');
+
+
+  const setBackgroundButton = document.getElementById('set-background-button');
+  const clearBackgroundButton = document.getElementById('clear-background-button');
+  const backgroundFileInput = document.getElementById('background-file-input');
+
+
+  const uploadManuscriptButton = document.getElementById('upload-manuscript-button');
+  const manuscriptFileInput = document.getElementById('manuscript-file-input');
+
+
+  const writingCanvasPlaceholder = document.getElementById('writing-canvas-placeholder');
+  const writingCanvas = document.getElementById('writing-canvas');
+  const editorToolbar = document.querySelector('.editor-toolbar');
+
+
+  const promptButton = document.getElementById('prompt-button');
+  const nicheSelector = document.getElementById('niche-selector');
+  const promptDisplay = document.getElementById('prompt-display');
+
+
+  const editor = document.getElementById('editor');
+  const goalInput = document.getElementById('goal-input');
+  const wordCountDisplay = document.getElementById('word-count-display');
+  const bookTitleInput = document.getElementById('book-title-input');
+  const bookSubtitleInput = document.getElementById('book-subtitle-input');
+
+
+  const deleteProjectButton = document.getElementById('delete-project-button');
+
+
+  // --- Theme toggle (optional) ---
+  const themeToggle = document.getElementById('theme-toggle');
+  if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+      document.body.classList.toggle('dark-mode');
+      localStorage.setItem('craftedTheme',
+        document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+    });
+    if (localStorage.getItem('craftedTheme') === 'dark') {
+      document.body.classList.add('dark-mode');
+    }
+  }
+
+
+  // --- Download Dropdown ---
+  const downloadDropdownButton = document.getElementById('download-dropdown-button');
+  const downloadOptionsMenu = document.getElementById('download-options-menu');
+  const downloadPdfButton = document.getElementById('download-pdf');
+  const downloadDocxButton = document.getElementById('download-docx');
+  const downloadHtmlButton = document.getElementById('download-html');
+  const downloadMdButton = document.getElementById('download-md');
+  const downloadTxtButton = document.getElementById('download-txt');
+
+
+  // --- State ---
+  const userStatus = 'subscribed';
+  let activeSection = null;
+  const sectionContents = {};
+  let documentStructure = [
+    "Title Page", "Copyright", "Dedication", "Table of Contents",
+    "Foreword", "Introduction", "Chapter 1"
+  ];
+
+
+  // Prompts: prefer window.PROMPTS; fallback keeps app safe
+  const FALLBACK_PROMPTS = {
+    "lead-magnet": ["Give 5 quick wins your audience can achieve this week."],
+    "self-help": ["Describe a tiny habit that creates outsized change."]
+  };
+  const PROMPTS = window.PROMPTS || FALLBACK_PROMPTS;
+
+
+  // --- Save / Load ---
+  function saveProject() {
+    if (activeSection) sectionContents[activeSection] = editor.innerHTML;
+    const projectData = {
+      title: bookTitleInput.value,
+      subtitle: bookSubtitleInput.value,
+      structure: documentStructure,
+      contents: sectionContents
+    };
+    localStorage.setItem('craftedScriptorProject', JSON.stringify(projectData));
+    saveStatus.classList.remove('hidden');
+    saveStatus.textContent = 'Saved!';
+    setTimeout(() => saveStatus.classList.add('hidden'), 1200);
+  }
+
+
+  function loadProject() {
+    const saved = localStorage.getItem('craftedScriptorProject');
+    if (saved) {
+      const p = JSON.parse(saved);
+      bookTitleInput.value = p.title || '';
+      bookSubtitleInput.value = p.subtitle || '';
+      documentStructure = Array.isArray(p.structure) && p.structure.length ? p.structure : documentStructure;
+      Object.assign(sectionContents, p.contents || {});
+    }
+    renderStructure();
+  }
+
+
+  // --- Outline render (with delete button and right-click rename) ---
+  function renderStructure() {
+    structureList.innerHTML = '';
+    documentStructure.forEach(name => {
+      if (!(name in sectionContents)) sectionContents[name] = '';
+
+
+      const li = document.createElement('li');
+      li.dataset.section = name;
+
+
+      const titleSpan = document.createElement('span');
+      titleSpan.className = 'section-title';
+      titleSpan.textContent = name;
+
+
+      const delBtn = document.createElement('span');
+      delBtn.className = 'delete-section';
+      delBtn.title = 'Delete section';
+      delBtn.textContent = '×';
+
+
+      li.appendChild(titleSpan);
+      li.appendChild(delBtn);
+      structureList.appendChild(li);
+    });
+  }
+
+
+  // --- Add / Delete / Rename sections ---
+  function addNewSection() {
+    const n = prompt("Enter the name for the new section:",
+      `Chapter ${documentStructure.filter(s => s.startsWith('Chapter')).length + 1}`);
+    if (n && n.trim()) {
+      const name = n.trim();
+      documentStructure.push(name);
+      sectionContents[name] = sectionContents[name] || '';
+      renderStructure();
+      // Auto-open the new section
+      openSection(name);
+    }
+  }
+
+
+  function deleteSection(name) {
+    if (!name) return;
+    if (!documentStructure.includes(name)) return;
+
+
+    const confirmed = confirm(`Delete "${name}"? This removes its content from this project.`);
+    if (!confirmed) return;
+
+
+    // Remove from structure
+    documentStructure = documentStructure.filter(s => s !== name);
+    // Remove its content
+    delete sectionContents[name];
+
+
+    // If deleting the active one, clear editor and show placeholder
+    if (activeSection === name) {
+      activeSection = null;
+      editor.innerHTML = '';
+      writingCanvas.classList.add('hidden');
+      writingCanvasPlaceholder.classList.remove('hidden');
+    }
+
+
+    renderStructure();
+    saveProject();
+  }
+
+
+  function renameSection(oldName) {
+    if (!oldName) return;
+    const idx = documentStructure.indexOf(oldName);
+    if (idx === -1) return;
+
+
+    const newName = prompt('Rename section to:', oldName);
+    if (!newName || !newName.trim()) return;
+    const trimmed = newName.trim();
+
+
+    // If name unchanged, do nothing
+    if (trimmed === oldName) return;
+
+
+    // If new name already exists, warn and stop
+    if (documentStructure.includes(trimmed)) {
+      alert('A section with that name already exists.');
+      return;
+    }
+
+
+    // Move content
+    sectionContents[trimmed] = sectionContents[oldName] || '';
+    delete sectionContents[oldName];
+
+
+    // Update structure
+    documentStructure[idx] = trimmed;
+
+
+    // Update activeSection if needed
+    if (activeSection === oldName) activeSection = trimmed;
+
+
+    renderStructure();
+    saveProject();
+  }
+
+
+  function openSection(name) {
+    if (!name) return;
+    if (activeSection) sectionContents[activeSection] = editor.innerHTML;
+
+
+    activeSection = name;
+
+
+    structureList.querySelectorAll('li').forEach(x => x.classList.remove('active'));
+    const li = [...structureList.querySelectorAll('li')].find(li => li.dataset.section === name);
+    if (li) li.classList.add('active');
+
+
+    editor.innerHTML = sectionContents[activeSection] || '';
+    writingCanvasPlaceholder.classList.add('hidden');
+    writingCanvas.classList.remove('hidden');
+    updateWordCount();
+    editor.focus();
+  }
+
+
+  // Clicks in outline: open section or delete
+  function handleOutlineClick(e) {
+    const del = e.target.closest('.delete-section');
+    if (del) {
+      const li = del.closest('li');
+      if (!li) return;
+      deleteSection(li.dataset.section);
+      return;
+    }
+    const li = e.target.closest('li');
+    if (!li) return;
+    openSection(li.dataset.section);
+  }
+
+
+  // Right-click rename
+  function handleOutlineContextMenu(e) {
+    const titleEl = e.target.closest('.section-title');
+    if (!titleEl) return;
+    e.preventDefault();
+    const li = titleEl.closest('li');
+    if (!li) return;
+    renameSection(li.dataset.section);
+  }
+
+
+  // --- Background image ---
+  function handleSetBackgroundClick() { backgroundFileInput.click(); }
+  function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      editor.style.backgroundImage = `url('${ev.target.result}')`;
+      editor.style.backgroundSize = 'cover';
+      editor.style.backgroundRepeat = 'no-repeat';
+      editor.style.backgroundPosition = 'center';
+    };
+    reader.readAsDataURL(file);
+  }
+  function handleClearBackgroundClick() { editor.style.backgroundImage = 'none'; }
+
+
+  // --- Inspiration Station ---
+  function getInspiration() {
+    const niche = nicheSelector.value;
+    if (!niche || niche === 'default') {
+      promptDisplay.textContent = "Please select a niche first!";
+      return;
+    }
+    const list = PROMPTS[niche] || [];
+    if (!list.length) {
+      promptDisplay.textContent = "No prompts for this niche yet. Try another!";
+      return;
+    }
+    const pick = list[Math.floor(Math.random() * list.length)];
+    promptDisplay.textContent = pick;
+  }
+
+
+  // --- Exports (each section starts on a new page) ---
+  function getFullDocumentHtml(forDocx = false) {
+    if (activeSection) sectionContents[activeSection] = editor.innerHTML;
+
+
+    const title = bookTitleInput.value || "Untitled Document";
+    const subtitle = bookSubtitleInput.value;
+
+
+    let body = `<h1>${title}</h1>`;
+    if (subtitle) body += `<h2>${subtitle}</h2>`;
+
+
+      documentStructure.forEach((name, idx) => {
+    const html = sectionContents[name] || '<p></p>';
+    // ⬇️ Page break BEFORE every section EXCEPT the first (PDF + DOCX friendly)
+    const breakDiv = idx === 0 ? '' : '<div style="page-break-before: always;"></div>';
+    body += `${breakDiv}<h3>${name}</h3>${html}`;
+  });
+
+
+
+    const styles = `<style>
+      body{font-family:'Merriweather',serif;font-size:12pt;line-height:1.6;}
+      h1,h2,h3{font-family:'Lato',sans-serif;page-break-after:avoid;}
+      img{max-width:100%;height:auto;}
+    </style>`;
+
+
+    return `<!doctype html><html><head><title>${title}</title>${styles}</head><body>${body}</body></html>`;
+  }
+
+
+  function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+    URL.revokeObjectURL(url); a.remove();
+  }
+
+
+  async function downloadAsPdf() {
+  try {
+    const html = getFullDocumentHtml(true); // page-breaks already inserted
+    const filenameHint = (bookTitleInput.value || 'document').trim() || 'document';
+
+    const res = await fetch(`${API_BASE}/export/pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ html, filenameHint })
+    });
+
+    if (!res.ok) throw new Error(`PDF export failed: ${await res.text()}`);
+    const data = await res.json();              // expects: { url: "https://s3..." }
+    window.open(data.url, '_blank');            // open presigned S3 URL
+  } catch (err) {
+    alert('PDF export failed. Please try again.');
+    console.error(err);
+  }
+}
+
+
+
+async function downloadAsDocx() {
+  try {
+    const html = getFullDocumentHtml(true);
+    const filenameHint = (bookTitleInput.value || 'document').trim() || 'document';
+
+    const res = await fetch(`${API_BASE}/export/docx`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ html, filenameHint })
+    });
+
+    if (!res.ok) throw new Error(`DOCX export failed: ${await res.text()}`);
+    const data = await res.json();      // expects: { url: "https://s3..." }
+    window.open(data.url, '_blank');    // or: window.location.href = data.url;
+  } catch (err) {
+    alert('DOCX export failed. Please try again.');
+    console.error(err);
+  }
+}
+
+
+
+  function downloadAsHtml() {
+    const blob = new Blob([getFullDocumentHtml()], { type: 'text/html' });
+    triggerDownload(blob, 'document.html');
+  }
+
+
+  function downloadAsMarkdown() {
+    const td = new TurndownService();
+    const md = td.turndown(getFullDocumentHtml());
+    triggerDownload(new Blob([md], { type: 'text/markdown' }), 'document.md');
+  }
+
+
+  function downloadAsTxt() {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = getFullDocumentHtml();
+    triggerDownload(new Blob([tmp.innerText], { type: 'text/plain' }), 'document.txt');
+  }
+
+
+  // --- Toolbar ---
+  let savedCursor = null;
+  function saveCursorPosition() {
+    const sel = window.getSelection();
+    if (sel.rangeCount) savedCursor = sel.getRangeAt(0);
+  }
+  function insertImageAtCursor(src) {
+    if (savedCursor) {
+      const sel = window.getSelection();
+      sel.removeAllRanges(); sel.addRange(savedCursor);
+    } else {
+      editor.focus();
+    }
+    document.execCommand('insertImage', false, src);
+  }
+
+
+  function handleToolbarClick(e) {
+    const el = e.target.closest('[data-command]');
+    if (!el) return;
+    const cmd = el.dataset.command;
+    let val = el.value || null;
+
+
+    if (cmd === 'createLink') {
+      val = prompt('Enter URL:');
+      if (!val) return;
+      document.execCommand(cmd, false, val);
+    } else if (cmd === 'insertImage') {
+      saveCursorPosition();
+      document.getElementById('image-insert-modal').classList.remove('hidden');
+    } else {
+      document.execCommand(cmd, false, val);
+    }
+  }
+
+
+  // --- Download dropdown / modal basics ---
+  function handleDownloadClick() {
+    if (userStatus !== 'subscribed') {
+      subscribeModal.classList.remove('hidden');
+      return;
+    }
+    downloadOptionsMenu.classList.toggle('hidden');
+    downloadDropdownButton.parentElement.classList.toggle('open');
+  }
+  function closeModal(modal) { if (modal) modal.classList.add('hidden'); }
+
+
+  // --- Delete Project (clear everything) ---
+  function deleteProject() {
+    const ok = confirm('Delete this entire project? This cannot be undone.');
+    if (!ok) return;
+
+
+    localStorage.removeItem('craftedScriptorProject');
+    // Reset state
+    for (const k in sectionContents) delete sectionContents[k];
+    documentStructure = [
+      "Title Page","Copyright","Dedication","Table of Contents",
+      "Foreword","Introduction","Chapter 1"
+    ];
+    activeSection = null;
+    editor.innerHTML = '';
+    writingCanvas.classList.add('hidden');
+    writingCanvasPlaceholder.classList.remove('hidden');
+    bookTitleInput.value = '';
+    bookSubtitleInput.value = '';
+    renderStructure();
+  }
+
+
+  // --- DOCX Upload into selected section ---
+  function handleManuscriptClick() {
+    if (!activeSection) {
+      alert('Select a section in the outline first, then upload.');
+      return;
+    }
+    manuscriptFileInput.click();
+  }
+  function handleManuscriptFile(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (!/\.docx$/i.test(file.name)) {
+      alert('Please choose a .docx file.');
+      return;
+    }
+    mammoth.convertToHtml({ arrayBuffer: file.arrayBuffer() })
+      .then(result => {
+        // Insert the converted HTML into the active section only
+        const html = result.value || '';
+        const existing = sectionContents[activeSection] || '';
+        sectionContents[activeSection] = existing + html;
+        editor.innerHTML = sectionContents[activeSection];
+        editor.focus();
+        updateWordCount();
+        saveProject();
+        manuscriptFileInput.value = ''; // reset
+      })
+      .catch(err => {
+        console.error(err);
+        alert('Upload failed. (Mammoth conversion error)');
+      });
+  }
+
+
+  // --- Events ---
+  saveButton.addEventListener('click', saveProject);
+
+
+  structureList.addEventListener('click', handleOutlineClick);
+  structureList.addEventListener('contextmenu', handleOutlineContextMenu);
+  addSectionButton.addEventListener('click', addNewSection);
+
+
+  setBackgroundButton.addEventListener('click', handleSetBackgroundClick);
+  clearBackgroundButton.addEventListener('click', handleClearBackgroundClick);
+  backgroundFileInput.addEventListener('change', handleFileSelect);
+
+
+  uploadManuscriptButton.addEventListener('click', handleManuscriptClick);
+  manuscriptFileInput.addEventListener('change', handleManuscriptFile);
+
+
+  editorToolbar.addEventListener('click', handleToolbarClick);
+  editorToolbar.addEventListener('change', handleToolbarClick);
+
+
+  promptButton.addEventListener('click', getInspiration);
+
+
+  // download menu
+  downloadDropdownButton.addEventListener('click', handleDownloadClick);
+  downloadPdfButton.addEventListener('click', e => { e.preventDefault(); downloadAsPdf(); });
+  downloadDocxButton.addEventListener('click', e => { e.preventDefault(); downloadAsDocx(); });
+  downloadHtmlButton.addEventListener('click', e => { e.preventDefault(); downloadAsHtml(); });
+  downloadMdButton.addEventListener('click', e => { e.preventDefault(); downloadAsMarkdown(); });
+  downloadTxtButton.addEventListener('click', e => { e.preventDefault(); downloadAsTxt(); });
+
+
+  // modals
+  document.querySelectorAll('.modal-close-button').forEach(btn =>
+    btn.addEventListener('click', ev => closeModal(ev.target.closest('.modal-overlay')))
+  );
+  document.querySelectorAll('.modal-overlay').forEach(overlay =>
+    overlay.addEventListener('click', ev => { if (ev.target === overlay) closeModal(overlay); })
+  );
+
+
+  // image modal internals
+  const imageInsertModal = document.getElementById('image-insert-modal');
+  const dropZone = document.getElementById('drop-zone');
+  const imageFileInput = document.getElementById('image-file-input');
+
+
+  document.getElementById('browse-file-button')
+    .addEventListener('click', () => imageFileInput.click());
+
+
+  imageFileInput.addEventListener('change', e => {
+    if (e.target.files.length) {
+      const file = e.target.files[0];
+      const r = new FileReader();
+      r.onload = ev => { insertImageAtCursor(ev.target.result); closeModal(imageInsertModal); };
+      r.readAsDataURL(file);
+    }
+  });
+
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) {
+      const file = e.dataTransfer.files[0];
+      const r = new FileReader();
+      r.onload = ev => { insertImageAtCursor(ev.target.result); closeModal(imageInsertModal); };
+      r.readAsDataURL(file);
+    }
+  });
+
+
+  // editor word count
+  function updateWordCount() {
+    const text = editor.innerText || '';
+    const words = text.trim().length ? text.trim().split(/\s+/).length : 0;
+    const goal = parseInt(goalInput.value || '0', 10) || 0;
+    wordCountDisplay.textContent = `${words} / ${goal}`;
+  }
+  editor.addEventListener('input', updateWordCount);
+  goalInput.addEventListener('change', updateWordCount);
+
+
+  // Delete project
+  if (deleteProjectButton) deleteProjectButton.addEventListener('click', deleteProject);
+
+
+  // init
+  loadProject();
+  updateWordCount();
+
+
+  // Focus editor so paste works immediately
+  editor.setAttribute('contenteditable', 'true');
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  try { wireDeleteProject(); } catch (e) { console.error('Delete wiring failed:', e); }
+});
+
+(function wireExportsOnce(){
+  if (window._wiredExports) return;
+  window._wiredExports = true;
+
+  function findBtnByText(txt) {
+    txt = txt.toLowerCase();
+    return Array.from(document.querySelectorAll('button, [role="button"], .btn'))
+      .find(b => (b.textContent || "").trim().toLowerCase() === txt);
+  }
+
+  function ensureTestButtons() {
+    let bar = document.getElementById('export-test-bar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'export-test-bar';
+      bar.style.position = 'fixed';
+      bar.style.right = '12px';
+      bar.style.bottom = '12px';
+      bar.style.padding = '8px';
+      bar.style.background = 'rgba(0,0,0,.6)';
+      bar.style.color = '#fff';
+      bar.style.borderRadius = '8px';
+      bar.style.zIndex = 99999;
+      bar.style.font = '14px/1.2 system-ui, sans-serif';
+      document.body.appendChild(bar);
+    }
+    return bar;
+  }
+
+  async function safe(fn) {
+    try { await fn(); } catch (e) { alert(e?.message || e); console.error(e); }
+  }
+
+  // PDF: prefer existing "Download Project" button
+  const pdfBtn = findBtnByText('download project');
+  if (pdfBtn) {
+    pdfBtn.addEventListener('click', () => safe(exportPDF));
+  } else {
+    const bar = ensureTestButtons();
+    const b = document.createElement('button');
+    b.textContent = 'Download PDF';
+    b.style.marginRight = '8px';
+    b.onclick = () => safe(exportPDF);
+    bar.appendChild(b);
+  }
+
+  // DOCX: try a button whose label includes "docx" and "download"
+  const docxBtn = Array.from(document.querySelectorAll('button, [role="button"], .btn'))
+    .find(b => {
+      const t = (b.textContent || '').toLowerCase();
+      return t.includes('docx') && t.includes('download');
+    });
+
+  if (docxBtn) {
+    docxBtn.addEventListener('click', () => safe(exportDOCX));
+  } else {
+    const bar = ensureTestButtons();
+    const b = document.createElement('button');
+    b.textContent = 'Download DOCX';
+    b.onclick = () => safe(exportDOCX);
+    bar.appendChild(b);
+  }
+})();

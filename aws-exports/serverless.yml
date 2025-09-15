@@ -1,0 +1,47 @@
+service: crafted-scriptor-exports
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: ca-central-1
+  httpApi:
+    cors: true
+  environment:
+    BUCKET: crafted-scriptor-exports
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+          Resource:
+            - arn:aws:s3:::crafted-scriptor-exports
+            - arn:aws:s3:::crafted-scriptor-exports/*
+
+functions:
+  exportPdf:
+    handler: pdf/index.handler
+    events:
+      - httpApi:
+          path: /export/pdf
+          method: post
+
+  exportDocx:
+    handler: docx/index.handler
+    events:
+      - httpApi:
+          path: /export/docx
+          method: post
+
+resources:
+  Resources:
+    ExportsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: crafted-scriptor-export-prod
+      DeletionPolicy: Retain
+
+
+

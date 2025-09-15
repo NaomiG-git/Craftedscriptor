@@ -1,0 +1,4 @@
+{
+  "html": "<h1>Hello PDF</h1><p>From curl</p>",
+  "filenameHint": "hello"
+}

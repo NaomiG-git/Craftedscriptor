@@ -1,22 +1,319 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Login</title>
-    <!-- This is the new, working link to the Amplify library -->
-    <script src="./libs/aws-amplify.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Crafted Scriptor Dashboard</title>
 
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css?v=2"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@400;700&family=Playfair+Display:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* Minimal styles to position the small delete (×) button on the far right */
+    #book-structure-list li {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between; /* text left, X right */
+      gap: 12px;
+    }
+    .section-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1 1 auto;
+      padding-right: 8px;
+    }
+    .delete-section {
+      flex: 0 0 auto;
+      color: #a66;
+      opacity: .8;
+      cursor: pointer;
+      padding: 0 6px;
+      border-radius: 4px;
+      user-select: none;
+    }
+    .delete-section:hover { background: rgba(166, 102, 102, 0.12); }
+  </style>
 </head>
 <body>
-    <h1>Login Form</h1>
-    <form id="login-form">
-        <input type="email" id="login-email" placeholder="Email">
-        <input type="password" id="login-password" placeholder="Password">
-        <button type="submit">Login</button>
-    </form>
+  <div class="app-wrapper">
+    <header class="app-header">
+      <div class="header-left">
+        <div class="header-logo">Crafted Scriptor</div>
 
-    <!-- This loads our custom JavaScript code -->
-    <script src="script.js"></script>
+        <!-- Save Project -->
+        <button id="save-button" class="header-button save-button">
+          <i class="fas fa-save"></i> Save Project
+        </button>
+        <span id="save-status" class="hidden">Saved!</span>
+      </div>
+
+      <div class="header-actions">
+        <!-- Theme toggle -->
+        <button id="theme-toggle" class="header-button">
+          <i class="fas fa-adjust"></i> Toggle Theme
+        </button>
+
+        <!-- Upload .docx (into selected section) -->
+        <button id="upload-manuscript-button" class="header-button">
+          <i class="fas fa-file-upload"></i> Upload (.docx)
+        </button>
+
+        <!-- Delete Project (clears everything) -->
+        <button id="delete-project-button" class="header-button">
+          <i class="fas fa-trash-alt"></i> Delete Project
+        </button>
+
+        <!-- Download -->
+        <div class="dropdown">
+          <button id="download-dropdown-button" class="header-button primary-action-button">
+            <i class="fas fa-download"></i> Download Project <i class="fas fa-caret-down"></i>
+          </button>
+          <div id="download-options-menu" class="dropdown-menu hidden">
+            <a href="#" id="download-pdf"><i class="fas fa-file-pdf"></i> PDF (Print Ready)</a>
+            <a href="#" id="download-docx"><i class="fas fa-file-word"></i> DOCX (Word)</a>
+            <a href="#" id="download-html"><i class="fas fa-file-code"></i> HTML</a>
+            <a href="#" id="download-md"><i class="fab fa-markdown"></i> Markdown</a>
+            <a href="#" id="download-txt"><i class="fas fa-file-alt"></i> Plain Text (TXT)</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- MAIN -->
+    <div class="app-container">
+      <!-- LEFT PANEL -->
+      <aside class="left-panel">
+        <!-- Project Outline -->
+        <div class="panel-section" id="project-outline-section">
+          <h3>Project Outline</h3>
+
+          <input type="text" id="book-title-input" placeholder="Enter Your Book Title"/>
+          <input type="text" id="book-subtitle-input" placeholder="Enter Your Subtitle (Optional)"/>
+
+          <ul id="book-structure-list"></ul>
+
+          <div class="outline-controls">
+            <button id="add-section-button">+ Add New Section</button>
+            <div class="button-group">
+              <button id="set-background-button" class="secondary-button">
+                <i class="fas fa-palette"></i> Set Background
+              </button>
+              <button id="clear-background-button" class="secondary-button danger">
+                <i class="fas fa-ban"></i> Clear
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inspiration Station -->
+        <div class="panel-section">
+          <h3>Inspiration Station</h3>
+
+          <select id="niche-selector">
+            <option value="default" disabled selected>Select Your Niche...</option>
+
+            <!-- Content Creators -->
+            <optgroup label="Content Creators">
+              <option value="email-funnel">Email Funnels</option>
+              <option value="lead-magnet">Lead Magnets</option>
+              <option value="ebook">Ebooks</option>
+              <option value="social-posts">Social Posts</option>
+              <option value="youtube-scripts">YouTube Scripts</option>
+              <option value="podcast-outlines">Podcast Outlines</option>
+              <option value="landing-pages">Landing Pages</option>
+              <option value="about-page">About Page / Bio</option>
+              <option value="brand-story">Brand Story</option>
+              <option value="case-studies">Case Studies</option>
+              <option value="sales-page">Sales Page</option>
+            </optgroup>
+
+            <!-- Digital Products -->
+            <optgroup label="Digital Products">
+              <option value="journaling">Journals & Planners</option>
+              <option value="templates">Templates (incl. Canva)</option>
+              <option value="mini-courses">Mini-Courses</option>
+              <option value="workbooks">Workbooks</option>
+              <option value="printables">Printables</option>
+              <option value="checklists">Checklists</option>
+              <option value="swipe-files">Swipe Files</option>
+              <option value="prompt-packs">Prompt Packs</option>
+            </optgroup>
+
+            <!-- Creative & Fiction -->
+            <optgroup label="Creative & Fiction">
+              <option value="childrens-book">Children’s Fiction</option>
+              <option value="mystery">Mystery / Thriller</option>
+              <option value="fantasy-sci-fi">Fantasy / Sci-Fi</option>
+              <option value="romance">Romance</option>
+              <option value="historical">Historical</option>
+              <option value="horror">Horror (general)</option>
+              <option value="witchy">Witchy & Spiritual (general)</option>
+            </optgroup>
+
+            <!-- Lifestyle & Hobbies -->
+            <optgroup label="Lifestyle & Hobbies">
+              <option value="food-cooking">Food & Cooking</option>
+              <option value="gardening">Gardening</option>
+              <option value="travel">Travel</option>
+              <option value="diy-crafts">DIY & Crafts</option>
+              <option value="photography">Photography</option>
+            </optgroup>
+
+            <!-- Health & Wellness -->
+            <optgroup label="Health & Wellness">
+              <option value="self-help">Self-Help & Motivation</option>
+              <option value="fitness">Fitness & Nutrition</option>
+              <option value="mindfulness">Mindfulness & Meditation</option>
+            </optgroup>
+
+            <!-- Education & Coaching -->
+            <optgroup label="Education & Coaching">
+              <option value="lesson-plans">Lesson Plans</option>
+              <option value="worksheets">Worksheets & Activities</option>
+              <option value="coaching-programs">Coaching Programs</option>
+            </optgroup>
+          </select>
+
+          <button id="prompt-button">Get a Prompt</button>
+          <div id="prompt-display"></div>
+        </div>
+      </aside>
+
+      <!-- RIGHT PANEL -->
+      <main class="right-panel">
+        <div id="writing-canvas-placeholder">
+          <h2>Welcome to Crafted Scriptor</h2>
+          <p>Select a section from the left to start writing.</p>
+        </div>
+
+        <div id="writing-canvas" class="hidden">
+          <div class="editor-toolbar">
+            <button class="toolbar-button" data-command="undo"><i class="fas fa-undo"></i></button>
+            <button class="toolbar-button" data-command="redo"><i class="fas fa-redo"></i></button>
+            <label class="toolbar-color-picker">
+              <i class="fas fa-font"></i>
+              <input type="color" data-command="foreColor">
+            </label>
+            <select class="toolbar-select" data-command="fontName">
+              <option value="Arial">Arial</option>
+              <option value="Lato">Lato</option>
+              <option value="Merriweather">Merriweather</option>
+              <option value="Montserrat">Montserrat</option>
+              <option value="Playfair Display">Playfair Display</option>
+              <option value="Roboto">Roboto</option>
+            </select>
+            <select class="toolbar-select" data-command="formatBlock">
+              <option value="P">Paragraph</option>
+              <option value="H1">Header 1</option>
+              <option value="H2">Header 2</option>
+              <option value="H3">Header 3</option>
+            </select>
+            <button class="toolbar-button" data-command="bold"><i class="fas fa-bold"></i></button>
+            <button class="toolbar-button" data-command="italic"><i class="fas fa-italic"></i></button>
+            <button class="toolbar-button" data-command="underline"><i class="fas fa-underline"></i></button>
+            <button class="toolbar-button" data-command="strikethrough"><i class="fas fa-strikethrough"></i></button>
+            <button class="toolbar-button" data-command="justifyLeft"><i class="fas fa-align-left"></i></button>
+            <button class="toolbar-button" data-command="justifyCenter"><i class="fas fa-align-center"></i></button>
+            <button class="toolbar-button" data-command="justifyRight"><i class="fas fa-align-right"></i></button>
+            <button class="toolbar-button" data-command="justifyFull"><i class="fas fa-align-justify"></i></button>
+            <button class="toolbar-button" data-command="insertUnorderedList"><i class="fas fa-list-ul"></i></button>
+            <button class="toolbar-button" data-command="insertOrderedList"><i class="fas fa-list-ol"></i></button>
+            <button class="toolbar-button" data-command="createLink"><i class="fas fa-link"></i></button>
+            <button class="toolbar-button" data-command="insertImage"><i class="fas fa-image"></i></button>
+            <button class="toolbar-button" data-command="removeFormat"><i class="fas fa-eraser"></i></button>
+          </div>
+
+          <div id="editor" contenteditable="true"></div>
+
+          <div class="goal-tracker">
+            <span>Daily Goal:</span>
+            <input type="number" id="goal-input" value="500">
+            <span id="word-count-display">0 / 500</span>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  <div id="subscribe-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <button class="modal-close-button">&times;</button>
+      <h3>Unlock Your Masterpiece!</h3>
+      <p>Subscribe to Crafted Scriptor to download in all formats, including PDF and DOCX.</p>
+      <a href="https://craftedscriptor.com/pricing" target="_blank" class="subscribe-link">
+        <button class="primary-action-button">Subscribe Now</button>
+      </a>
+    </div>
+  </div>
+
+  <div id="image-insert-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <button class="modal-close-button">&times;</button>
+      <h3>Insert Image</h3>
+      <div class="modal-tabs">
+        <button class="tab-link active" data-tab="upload">Upload File</button>
+        <button class="tab-link" data-tab="url">From URL</button>
+      </div>
+      <div id="upload-tab" class="tab-content active">
+        <div id="drop-zone">
+          <p>Drag & drop your image here, or</p>
+          <button id="browse-file-button" class="secondary-button">Browse Files</button>
+          <input type="file" id="image-file-input" accept="image/png, image/jpeg, image/gif" class="hidden">
+        </div>
+        <div id="upload-status"></div>
+      </div>
+      <div id="url-tab" class="tab-content">
+        <p>Enter the public URL of an image.</p>
+        <input type="text" id="image-url-input" placeholder="https://example.com/image.jpg">
+        <button id="insert-from-url-button" class="primary-action-button">Insert Image</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading-spinner" class="modal-overlay hidden">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Hidden inputs -->
+  <input type="file" id="background-file-input" accept="image/*" class="hidden">
+  <input type="file" id="manuscript-file-input" accept=".docx" class="hidden">
+
+  <!-- PDF POST form -->
+  <form id="pdf-form" action="/generate-pdf" method="POST" target="_blank" class="hidden">
+    <input type="hidden" name="htmlContent" id="pdf-html-content">
+  </form>
+
+  <!-- Scripts (order matters) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="./html-to-docx.umd.js"></script>
+  <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
+
+  <!-- Your prompts library must define window.PROMPTS -->
+  <script src="prompts.js?v=3"></script>
+
+  <!-- App logic -->
+  <script src="main.js?v=5"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

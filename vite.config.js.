@@ -1,0 +1,16 @@
+// vite.config.js
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  server: {
+    proxy: {
+      // This is the corrected proxy configuration.
+      // It forwards any request starting with '/.netlify/functions/'
+      // to the correct internal port where the functions are running.
+      '/.netlify/functions': {
+        target: 'http://localhost:9999', // This is the default port for Netlify functions
+        changeOrigin: true,
+      },
+    },
+  },
+} );
