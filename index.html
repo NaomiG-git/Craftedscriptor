@@ -5,12 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Crafted Scriptor Dashboard</title>
 
+
   <!-- Styles -->
   <link rel="stylesheet" href="style.css?v=2"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@400;700&family=Playfair+Display:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet"/>
+
 
   <style>
     /* Minimal styles to position the small delete (×) button on the far right */
@@ -46,6 +48,7 @@
       <div class="header-left">
         <div class="header-logo">Crafted Scriptor</div>
 
+
         <!-- Save Project -->
         <button id="save-button" class="header-button save-button">
           <i class="fas fa-save"></i> Save Project
@@ -53,21 +56,25 @@
         <span id="save-status" class="hidden">Saved!</span>
       </div>
 
+
       <div class="header-actions">
         <!-- Theme toggle -->
         <button id="theme-toggle" class="header-button">
           <i class="fas fa-adjust"></i> Toggle Theme
         </button>
 
+
         <!-- Upload .docx (into selected section) -->
         <button id="upload-manuscript-button" class="header-button">
           <i class="fas fa-file-upload"></i> Upload (.docx)
         </button>
 
+
         <!-- Delete Project (clears everything) -->
         <button id="delete-project-button" class="header-button">
           <i class="fas fa-trash-alt"></i> Delete Project
         </button>
+
 
         <!-- Download -->
         <div class="dropdown">
@@ -85,6 +92,7 @@
       </div>
     </header>
 
+
     <!-- MAIN -->
     <div class="app-container">
       <!-- LEFT PANEL -->
@@ -93,10 +101,13 @@
         <div class="panel-section" id="project-outline-section">
           <h3>Project Outline</h3>
 
+
           <input type="text" id="book-title-input" placeholder="Enter Your Book Title"/>
           <input type="text" id="book-subtitle-input" placeholder="Enter Your Subtitle (Optional)"/>
 
+
           <ul id="book-structure-list"></ul>
+
 
           <div class="outline-controls">
             <button id="add-section-button">+ Add New Section</button>
@@ -111,12 +122,15 @@
           </div>
         </div>
 
+
         <!-- Inspiration Station -->
         <div class="panel-section">
           <h3>Inspiration Station</h3>
 
+
           <select id="niche-selector">
             <option value="default" disabled selected>Select Your Niche...</option>
+
 
             <!-- Content Creators -->
             <optgroup label="Content Creators">
@@ -133,6 +147,7 @@
               <option value="sales-page">Sales Page</option>
             </optgroup>
 
+
             <!-- Digital Products -->
             <optgroup label="Digital Products">
               <option value="journaling">Journals & Planners</option>
@@ -145,6 +160,7 @@
               <option value="prompt-packs">Prompt Packs</option>
             </optgroup>
 
+
             <!-- Creative & Fiction -->
             <optgroup label="Creative & Fiction">
               <option value="childrens-book">Children’s Fiction</option>
@@ -156,6 +172,7 @@
               <option value="witchy">Witchy & Spiritual (general)</option>
             </optgroup>
 
+
             <!-- Lifestyle & Hobbies -->
             <optgroup label="Lifestyle & Hobbies">
               <option value="food-cooking">Food & Cooking</option>
@@ -165,12 +182,14 @@
               <option value="photography">Photography</option>
             </optgroup>
 
+
             <!-- Health & Wellness -->
             <optgroup label="Health & Wellness">
               <option value="self-help">Self-Help & Motivation</option>
               <option value="fitness">Fitness & Nutrition</option>
               <option value="mindfulness">Mindfulness & Meditation</option>
             </optgroup>
+
 
             <!-- Education & Coaching -->
             <optgroup label="Education & Coaching">
@@ -180,10 +199,12 @@
             </optgroup>
           </select>
 
+
           <button id="prompt-button">Get a Prompt</button>
           <div id="prompt-display"></div>
         </div>
       </aside>
+
 
       <!-- RIGHT PANEL -->
       <main class="right-panel">
@@ -191,6 +212,7 @@
           <h2>Welcome to Crafted Scriptor</h2>
           <p>Select a section from the left to start writing.</p>
         </div>
+
 
         <div id="writing-canvas" class="hidden">
           <div class="editor-toolbar">
@@ -229,7 +251,9 @@
             <button class="toolbar-button" data-command="removeFormat"><i class="fas fa-eraser"></i></button>
           </div>
 
+
           <div id="editor" contenteditable="true"></div>
+
 
           <div class="goal-tracker">
             <span>Daily Goal:</span>
@@ -240,6 +264,7 @@
       </main>
     </div>
   </div>
+
 
   <!-- Modals -->
   <div id="subscribe-modal" class="modal-overlay hidden">
@@ -252,6 +277,7 @@
       </a>
     </div>
   </div>
+
 
   <div id="image-insert-modal" class="modal-overlay hidden">
     <div class="modal-content">
@@ -277,26 +303,32 @@
     </div>
   </div>
 
+
   <div id="loading-spinner" class="modal-overlay hidden">
     <div class="spinner"></div>
   </div>
 
+
   <!-- Hidden inputs -->
   <input type="file" id="background-file-input" accept="image/*" class="hidden">
   <input type="file" id="manuscript-file-input" accept=".docx" class="hidden">
+
 
   <!-- PDF POST form -->
   <form id="pdf-form" action="/generate-pdf" method="POST" target="_blank" class="hidden">
     <input type="hidden" name="htmlContent" id="pdf-html-content">
   </form>
 
+
   <!-- Scripts (order matters) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <script src="./html-to-docx.umd.js"></script>
   <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
 
+
   <!-- Your prompts library must define window.PROMPTS -->
   <script src="prompts.js?v=3"></script>
+
 
   <!-- App logic -->
   <script src="main.js?v=5"></script>

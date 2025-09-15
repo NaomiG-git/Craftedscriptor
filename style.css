@@ -8,22 +8,36 @@
   --border-color:   #e7dcc7;
 
 
+
+
   /* Buttons (muted) */
 /* Buttons (brown / beige theme) */
 --primary-color:   #a1866f;  /* warm beige-brown */
 --primary-hover:   #8f7762;  /* slightly darker */
 
 
+
+
 --success-color:   #bfa98a;  /* soft sand */
 --success-hover:   #a89176;  /* deeper sand */
+
+
 
 
 --danger-color:    #8c6f5a;  /* muted clay */
 --danger-hover:    #7a5f4e;  /* deeper clay */
 
 
+
+
 --secondary-color: #c7b9a4;  /* light beige-gray */
 --secondary-hover: #b3a48d;  /* muted beige-gray */
+
+
+
+
+
+
 
 
 
@@ -37,6 +51,8 @@
 }
 
 
+
+
 /* ===== DARK MODE (apply with <body class="dark-mode">) ===== */
 body.dark-mode {
   /* Surfaces */
@@ -47,11 +63,15 @@ body.dark-mode {
   --border-color:   #3a3a3a;
 
 
+
+
   /* Buttons: mid-value gray (your request) */
   --primary-color:    #4b4e55;  --primary-hover: #5a5e66;
   --success-color:    #4b4e55;  --success-hover:#5a5e66;
   --danger-color:     #4b4e55;  --danger-hover: #5a5e66;
   --secondary-color:  #5a5e66;  --secondary-hover:#686d75;
+
+
 
 
   /* Neutrals */
@@ -60,9 +80,13 @@ body.dark-mode {
   --off-white-bg:   var(--page-bg);
 
 
+
+
   background-color: var(--page-bg);
   color: var(--font-color);
 }
+
+
 
 
 /* Optional: subtle danger affordance without changing gray fill */
@@ -70,6 +94,8 @@ body.dark-mode .secondary-button.danger:hover,
 body.dark-mode .secondary-button.danger:focus-visible {
   box-shadow: 0 0 0 3px rgba(208,125,125,.28);
 }
+
+
 
 
 /* ===== SAGE THEME (apply with <body class="sage-mode">) ===== */
@@ -81,11 +107,15 @@ body.sage-mode {
   --border-color:   #D3E0D9;
 
 
+
+
   --primary-color:    #67917A;  --primary-hover:#5A826C;   /* mid sage   */
   --success-color:    #8BA89A;  --success-hover:#7D9A8D;   /* light sage */
   --danger-color:     #8C7A76;  --danger-hover:#7E6C67;    /* muted taupe*/
   --secondary-color:  #6A7C71;  --secondary-hover:#5E6F65; /* desat forest*/
 }
+
+
 
 
 /* ===== BASE (apply tokens globally) ===== */
@@ -94,6 +124,8 @@ html, body {
   color: var(--font-color);
   font-family: 'Lato', sans-serif;
 }
+
+
 
 
 /* Subtle parchment frame (one copy only) */
@@ -106,13 +138,21 @@ body::before{
 }
 
 
+
+
 /* ===== APP LAYOUT & COMPONENTS ===== */
+
+
 
 
 .hidden { display: none !important; }
 
 
+
+
 .app-wrapper { display: flex; flex-direction: column; height: 100vh; }
+
+
 
 
 .app-header {
@@ -124,10 +164,16 @@ body::before{
 }
 
 
+
+
 .header-left, .header-actions { display: flex; align-items: center; gap: 20px; }
 
 
+
+
 .header-logo { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; }
+
+
 
 
 /* ✅ FIXED: this selector was missing earlier and broke the CSS */
@@ -146,6 +192,8 @@ body::before{
 .header-button:hover { background-color: var(--light-gray); }
 
 
+
+
 .primary-action-button {
   background-color: var(--success-color);
   color: #fff;
@@ -157,14 +205,22 @@ body::before{
 }
 
 
+
+
 .save-button { border-color: var(--primary-color); color: var(--primary-color); }
 .save-button:hover { background-color: var(--primary-color); color: #fff; }
+
+
 
 
 #save-status { color: var(--success-color); font-weight: bold; }
 
 
+
+
 .app-container { display: flex; flex-grow: 1; overflow: hidden; }
+
+
 
 
 .left-panel {
@@ -177,6 +233,8 @@ body::before{
 }
 
 
+
+
 .panel-section {
   background-color: var(--light-gray);
   border-radius: 8px;
@@ -184,6 +242,8 @@ body::before{
   border: 1px solid var(--border-color);
 }
 .panel-section h3 { margin-top: 0; margin-bottom: 15px; font-family: 'Playfair Display', serif; }
+
+
 
 
 .right-panel {
@@ -194,10 +254,14 @@ body::before{
 }
 
 
+
+
 #project-outline-section input[type="text"] {
   width: 100%; padding: 8px; margin-bottom: 10px;
   border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box;
 }
+
+
 
 
 #book-structure-list { list-style: none; padding: 0; margin: 10px 0; max-height: 300px; overflow-y: auto; }
@@ -209,17 +273,25 @@ body::before{
 #book-structure-list li.active { background-color: var(--primary-color); color: #fff; font-weight: bold; }
 
 
+
+
 .outline-controls button, #prompt-button, .subscribe-link button {
   width: 100%; padding: 10px; border: none; border-radius: 5px; cursor: pointer;
   font-size: 16px; font-weight: bold; transition: background-color 0.2s;
 }
 
 
+
+
 #add-section-button { background-color: var(--success-color); color: #fff; margin-top: 10px; }
 #add-section-button:hover { background-color: var(--success-hover); }
 
 
+
+
 .button-group { display: flex; gap: 10px; margin-top: 10px; }
+
+
 
 
 .secondary-button {
@@ -231,13 +303,19 @@ body::before{
 .secondary-button.danger:hover { background-color: var(--danger-hover); }
 
 
+
+
 #niche-selector {
   width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 4px; border: 1px solid var(--border-color);
 }
 
 
+
+
 #prompt-button { background-color: var(--primary-color); color: #fff; }
 #prompt-button:hover { background-color: var(--primary-hover); }
+
+
 
 
 #prompt-display {
@@ -248,6 +326,8 @@ body::before{
 }
 
 
+
+
 #writing-canvas-placeholder {
   display: flex; flex-direction: column; justify-content: center; align-items: center;
   height: 100%; text-align: center; color: #999;
@@ -255,7 +335,11 @@ body::before{
 #writing-canvas-placeholder h2 { font-family: 'Playfair Display', serif; font-size: 28px; }
 
 
+
+
 #writing-canvas { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
+
 
 
 .editor-toolbar {
@@ -264,6 +348,8 @@ body::before{
   border-bottom: 1px solid var(--border-color);
   display: flex; flex-wrap: wrap; align-items: center; gap: 5px; flex-shrink: 0;
 }
+
+
 
 
 .toolbar-button, .toolbar-select, .toolbar-color-picker {
@@ -276,6 +362,8 @@ body::before{
 .toolbar-color-picker input[type="color"] { width: 20px; height: 20px; border: none; background: none; padding: 0; cursor: pointer; margin-left: 5px; }
 
 
+
+
 #editor {
   flex-grow: 1;
   padding: 20px 40px;
@@ -283,6 +371,8 @@ body::before{
   overflow-y: auto; outline: none;
   background-color: var(--panel-bg); /* token, not hard-coded */
 }
+
+
 
 
 .goal-tracker {
@@ -293,7 +383,11 @@ body::before{
 }
 
 
+
+
 #goal-input { width: 70px; border: 1px solid var(--border-color); border-radius: 4px; padding: 5px; }
+
+
 
 
 .modal-overlay {
@@ -301,6 +395,8 @@ body::before{
   background-color: rgba(0,0,0,0.6);
   display: flex; justify-content: center; align-items: center; z-index: 1000;
 }
+
+
 
 
 .modal-content {
@@ -316,9 +412,13 @@ body::before{
 .modal-content p { margin-bottom: 20px; line-height: 1.6; }
 
 
+
+
 .dropdown { position: relative; display: inline-block; }
 #download-dropdown-button .fa-caret-down { margin-left: 8px; transition: transform 0.2s ease-in-out; }
 .dropdown.open #download-dropdown-button .fa-caret-down { transform: rotate(180deg); }
+
+
 
 
 .dropdown-menu {
@@ -336,6 +436,8 @@ body::before{
 .dropdown-menu a i { width: 16px; text-align: center; color: var(--secondary-color); }
 
 
+
+
 .modal-tabs { display: flex; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; }
 .tab-link {
   padding: 10px 20px; cursor: pointer; background: none; border: none;
@@ -344,6 +446,8 @@ body::before{
 .tab-link.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
+
+
 
 
 #drop-zone {
@@ -355,9 +459,13 @@ body::before{
 #drop-zone p { margin: 0 0 15px 0; color: #666; }
 
 
+
+
 #image-url-input { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; margin-bottom: 15px; }
 #insert-from-url-button { width: 100%; }
 #upload-status { margin-top: 15px; font-weight: bold; }
+
+
 
 
 .spinner {
@@ -366,6 +474,8 @@ body::before{
   border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite;
 }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+
 
 
 /* Make prompt text auto-match theme colors */
@@ -387,6 +497,7 @@ body::before{
   gap: 12px;
 }
 
+
 #book-structure-list .section-title {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -395,6 +506,7 @@ body::before{
   padding-right: 8px;
   cursor: default; /* right-click to rename */
 }
+
 
 #book-structure-list .delete-section {
   flex: 0 0 auto;
@@ -408,6 +520,7 @@ body::before{
 #book-structure-list .delete-section:hover {
   background: rgba(166, 102, 102, 0.12);
 }
+
 
 
 

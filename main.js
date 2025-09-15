@@ -1,14 +1,8 @@
-import { exportDOCX } from "./export-docx.js";
-import { exportPDF } from "./export-pdf.js";
-import { wireDeleteProject } from "./delete-project.js";
 // main.js – stable build with Delete/Rename Section
 document.addEventListener('DOMContentLoaded', () => {
   // --- Client-side export libs (provided by script tags) ---
   const TurndownService = window.TurndownService;
   const htmlToDocx = window.htmlToDocx; // from html-to-docx.umd.js
-  // ⬇️ ADD: API Gateway base URL (replace with your real URL)
-  const API_BASE = 'https://8fcurfgv4m.execute-api.ca-central-1.amazonaws.com';
-
 
 
   // --- Elements ---
@@ -328,13 +322,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (subtitle) body += `<h2>${subtitle}</h2>`;
 
 
-      documentStructure.forEach((name, idx) => {
-    const html = sectionContents[name] || '<p></p>';
-    // ⬇️ Page break BEFORE every section EXCEPT the first (PDF + DOCX friendly)
-    const breakDiv = idx === 0 ? '' : '<div style="page-break-before: always;"></div>';
-    body += `${breakDiv}<h3>${name}</h3>${html}`;
-  });
-
+    documentStructure.forEach((name, idx) => {
+      const html = sectionContents[name] || '<p></p>';
+      // First section should also start on a new page for strictness in DOCX/PDF output
+      const pageBreak = forDocx ? '<br style="page-break-before:always" />' : '';
+      body += `${pageBreak}<h3>${name}</h3>${html}`;
+    });
 
 
     const styles = `<style>
@@ -357,48 +350,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 
-  async function downloadAsPdf() {
-  try {
-    const html = getFullDocumentHtml(true); // page-breaks already inserted
-    const filenameHint = (bookTitleInput.value || 'document').trim() || 'document';
-
-    const res = await fetch(`${API_BASE}/export/pdf`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ html, filenameHint })
-    });
-
-    if (!res.ok) throw new Error(`PDF export failed: ${await res.text()}`);
-    const data = await res.json();              // expects: { url: "https://s3..." }
-    window.open(data.url, '_blank');            // open presigned S3 URL
-  } catch (err) {
-    alert('PDF export failed. Please try again.');
-    console.error(err);
+  function downloadAsPdf() {
+    const html = getFullDocumentHtml(true); // true keeps page breaks strict
+    document.getElementById('pdf-html-content').value = html;
+    document.getElementById('pdf-form').submit();
   }
-}
 
 
-
-async function downloadAsDocx() {
-  try {
-    const html = getFullDocumentHtml(true);
-    const filenameHint = (bookTitleInput.value || 'document').trim() || 'document';
-
-    const res = await fetch(`${API_BASE}/export/docx`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ html, filenameHint })
-    });
-
-    if (!res.ok) throw new Error(`DOCX export failed: ${await res.text()}`);
-    const data = await res.json();      // expects: { url: "https://s3..." }
-    window.open(data.url, '_blank');    // or: window.location.href = data.url;
-  } catch (err) {
-    alert('DOCX export failed. Please try again.');
-    console.error(err);
+  async function downloadAsDocx() {
+    try {
+      const html = getFullDocumentHtml(true);
+      const buffer = await htmlToDocx(html, null, {
+        table: { row: { cantSplit: true } },
+        footer: true, pageNumber: true
+      });
+      triggerDownload(buffer, 'document.docx');
+    } catch (err) {
+      alert('DOCX export failed. Make sure html-to-docx.umd.js is loading locally.');
+      console.error(err);
+    }
   }
-}
-
 
 
   function downloadAsHtml() {
@@ -626,6 +597,7 @@ async function downloadAsDocx() {
   // Focus editor so paste works immediately
   editor.setAttribute('contenteditable', 'true');
 });
+
 
 
 
