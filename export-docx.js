@@ -1,4 +1,4 @@
-import endpoints from "./export-endpoints.json" assert { type: "json" };
+import { Document, Packer, Paragraph, HeadingLevel, TextRun } from "docx";
 
 function getEditorHTML() {
   const editor = document.getElementById('editor') || document.querySelector('[data-editor], .editor, #content');
@@ -32,6 +32,52 @@ async function callExport(url, filenameHint) {
 }
 
 export async function exportDOCX() {
-  if (!endpoints?.DOCX_URL) throw new Error("DOCX_URL missing in export-endpoints.json");
-  return callExport(endpoints.DOCX_URL, "project.docx");
+  const title = "Your Document Title"; // Replace with your title logic
+  const subtitle = "Your Document Subtitle"; // Replace with your subtitle logic
+  const documentStructure = ["Section 1", "Section 2"]; // Replace with your sections logic
+  const sectionContents = {
+    "Section 1": "<p>Content for section 1.</p>",
+    "Section 2": "<p>Content for section 2.</p>",
+  }; // Replace with your content logic
+
+  // Build DOCX content
+  const children = [];
+  if (title) {
+    children.push(new Paragraph({
+      text: title,
+      heading: HeadingLevel.TITLE,
+      spacing: { after: 240 }
+    }));
+  }
+  if (subtitle) {
+    children.push(new Paragraph({
+      text: subtitle,
+      heading: HeadingLevel.HEADING_2,
+      spacing: { after: 160 }
+    }));
+  }
+  documentStructure.forEach((section) => {
+    children.push(new Paragraph({
+      text: section,
+      heading: HeadingLevel.HEADING_1,
+      spacing: { after: 120 }
+    }));
+    // Convert HTML to plain text paragraphs
+    const html = sectionContents[section] || "";
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    tmp.innerText.split(/\n+/).forEach(p => {
+      if (p.trim()) {
+        children.push(new Paragraph({
+          children: [new TextRun(p.trim())],
+          spacing: { after: 80 }
+        }));
+      }
+    });
+  });
+  const doc = new Document({
+    sections: [{ properties: {}, children }]
+  });
+  const blob = await Packer.toBlob(doc);
+  return blob;
 }

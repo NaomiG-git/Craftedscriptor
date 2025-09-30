@@ -3,31 +3,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Client-side export libs (provided by script tags) ---
   const TurndownService = window.TurndownService;
   const htmlToDocx = window.htmlToDocx; // from html-to-docx.umd.js
+  // ⬇️ ADD: API Gateway base URL (replace with your real URL)
+  const API_BASE = 'https://8fcurfgv4m.execute-api.ca-central-1.amazonaws.com';
 
 
   // --- Elements ---
   const saveButton = document.getElementById('save-button');
   const saveStatus = document.getElementById('save-status');
   const subscribeModal = document.getElementById('subscribe-modal');
-
-
   const structureList = document.getElementById('book-structure-list');
   const addSectionButton = document.getElementById('add-section-button');
-
 
   const setBackgroundButton = document.getElementById('set-background-button');
   const clearBackgroundButton = document.getElementById('clear-background-button');
   const backgroundFileInput = document.getElementById('background-file-input');
 
-
   const uploadManuscriptButton = document.getElementById('upload-manuscript-button');
   const manuscriptFileInput = document.getElementById('manuscript-file-input');
-
 
   const writingCanvasPlaceholder = document.getElementById('writing-canvas-placeholder');
   const writingCanvas = document.getElementById('writing-canvas');
   const editorToolbar = document.querySelector('.editor-toolbar');
-
 
   const promptButton = document.getElementById('prompt-button');
   const nicheSelector = document.getElementById('niche-selector');
@@ -40,9 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const bookTitleInput = document.getElementById('book-title-input');
   const bookSubtitleInput = document.getElementById('book-subtitle-input');
 
-
   const deleteProjectButton = document.getElementById('delete-project-button');
-
 
   // --- Theme toggle (optional) ---
   const themeToggle = document.getElementById('theme-toggle');
@@ -57,7 +51,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-
   // --- Download Dropdown ---
   const downloadDropdownButton = document.getElementById('download-dropdown-button');
   const downloadOptionsMenu = document.getElementById('download-options-menu');
@@ -66,7 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const downloadHtmlButton = document.getElementById('download-html');
   const downloadMdButton = document.getElementById('download-md');
   const downloadTxtButton = document.getElementById('download-txt');
-
 
   // --- State ---
   const userStatus = 'subscribed';
@@ -77,14 +69,12 @@ document.addEventListener('DOMContentLoaded', () => {
     "Foreword", "Introduction", "Chapter 1"
   ];
 
-
   // Prompts: prefer window.PROMPTS; fallback keeps app safe
   const FALLBACK_PROMPTS = {
     "lead-magnet": ["Give 5 quick wins your audience can achieve this week."],
     "self-help": ["Describe a tiny habit that creates outsized change."]
   };
   const PROMPTS = window.PROMPTS || FALLBACK_PROMPTS;
-
 
   // --- Save / Load ---
   function saveProject() {
@@ -101,7 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => saveStatus.classList.add('hidden'), 1200);
   }
 
-
   function loadProject() {
     const saved = localStorage.getItem('craftedScriptorProject');
     if (saved) {
@@ -114,28 +103,23 @@ document.addEventListener('DOMContentLoaded', () => {
     renderStructure();
   }
 
-
   // --- Outline render (with delete button and right-click rename) ---
   function renderStructure() {
     structureList.innerHTML = '';
     documentStructure.forEach(name => {
       if (!(name in sectionContents)) sectionContents[name] = '';
 
-
       const li = document.createElement('li');
       li.dataset.section = name;
-
 
       const titleSpan = document.createElement('span');
       titleSpan.className = 'section-title';
       titleSpan.textContent = name;
 
-
       const delBtn = document.createElement('span');
       delBtn.className = 'delete-section';
       delBtn.title = 'Delete section';
       delBtn.textContent = '×';
-
 
       li.appendChild(titleSpan);
       li.appendChild(delBtn);
@@ -158,21 +142,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-
   function deleteSection(name) {
     if (!name) return;
     if (!documentStructure.includes(name)) return;
 
-
     const confirmed = confirm(`Delete "${name}"? This removes its content from this project.`);
     if (!confirmed) return;
-
 
     // Remove from structure
     documentStructure = documentStructure.filter(s => s !== name);
     // Remove its content
     delete sectionContents[name];
-
 
     // If deleting the active one, clear editor and show placeholder
     if (activeSection === name) {
@@ -182,26 +162,21 @@ document.addEventListener('DOMContentLoaded', () => {
       writingCanvasPlaceholder.classList.remove('hidden');
     }
 
-
     renderStructure();
     saveProject();
   }
-
 
   function renameSection(oldName) {
     if (!oldName) return;
     const idx = documentStructure.indexOf(oldName);
     if (idx === -1) return;
 
-
     const newName = prompt('Rename section to:', oldName);
     if (!newName || !newName.trim()) return;
     const trimmed = newName.trim();
 
-
     // If name unchanged, do nothing
     if (trimmed === oldName) return;
-
 
     // If new name already exists, warn and stop
     if (documentStructure.includes(trimmed)) {
@@ -209,37 +184,29 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-
     // Move content
     sectionContents[trimmed] = sectionContents[oldName] || '';
     delete sectionContents[oldName];
 
-
     // Update structure
     documentStructure[idx] = trimmed;
 
-
     // Update activeSection if needed
     if (activeSection === oldName) activeSection = trimmed;
-
 
     renderStructure();
     saveProject();
   }
 
-
   function openSection(name) {
     if (!name) return;
     if (activeSection) sectionContents[activeSection] = editor.innerHTML;
 
-
     activeSection = name;
-
 
     structureList.querySelectorAll('li').forEach(x => x.classList.remove('active'));
     const li = [...structureList.querySelectorAll('li')].find(li => li.dataset.section === name);
     if (li) li.classList.add('active');
-
 
     editor.innerHTML = sectionContents[activeSection] || '';
     writingCanvasPlaceholder.classList.add('hidden');
@@ -247,7 +214,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateWordCount();
     editor.focus();
   }
-
 
   // Clicks in outline: open section or delete
   function handleOutlineClick(e) {
@@ -263,7 +229,6 @@ document.addEventListener('DOMContentLoaded', () => {
     openSection(li.dataset.section);
   }
 
-
   // Right-click rename
   function handleOutlineContextMenu(e) {
     const titleEl = e.target.closest('.section-title');
@@ -273,7 +238,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!li) return;
     renameSection(li.dataset.section);
   }
-
 
   // --- Background image ---
   function handleSetBackgroundClick() { backgroundFileInput.click(); }
@@ -291,7 +255,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   function handleClearBackgroundClick() { editor.style.backgroundImage = 'none'; }
 
-
   // --- Inspiration Station ---
   function getInspiration() {
     const niche = nicheSelector.value;
@@ -308,75 +271,115 @@ document.addEventListener('DOMContentLoaded', () => {
     promptDisplay.textContent = pick;
   }
 
-
   // --- Exports (each section starts on a new page) ---
-  function getFullDocumentHtml(forDocx = false) {
-    if (activeSection) sectionContents[activeSection] = editor.innerHTML;
+function getFullDocumentHtml(forDocx = false) {
+  if (activeSection) sectionContents[activeSection] = editor.innerHTML;
 
+  const title = bookTitleInput.value || "Untitled Document";
+  const subtitle = bookSubtitleInput.value;
 
-    const title = bookTitleInput.value || "Untitled Document";
-    const subtitle = bookSubtitleInput.value;
+  let body = `<h1>${title}</h1>`;
+  if (subtitle) body += `<h2>${subtitle}</h2>`;
 
+  // Wrap each chapter in a section that itself forces a new page.
+  // Using a wrapper + flow-root avoids heading margin collapsing.
+  documentStructure.forEach((name, idx) => {
+    const html = sectionContents[name] || '<p></p>';
+    const firstClass = idx === 0 ? " first" : "";
+    body += `<section class="chapter${firstClass}">
+               <h1 class="chapter-title">${name}</h1>
+               ${html}
+             </section>`;
+  });
 
-    let body = `<h1>${title}</h1>`;
-    if (subtitle) body += `<h2>${subtitle}</h2>`;
-
-
-    documentStructure.forEach((name, idx) => {
-      const html = sectionContents[name] || '<p></p>';
-      // First section should also start on a new page for strictness in DOCX/PDF output
-      const pageBreak = forDocx ? '<br style="page-break-before:always" />' : '';
-      body += `${pageBreak}<h3>${name}</h3>${html}`;
-    });
-
-
-    const styles = `<style>
-      body{font-family:'Merriweather',serif;font-size:12pt;line-height:1.6;}
-      h1,h2,h3{font-family:'Lato',sans-serif;page-break-after:avoid;}
-      img{max-width:100%;height:auto;}
-    </style>`;
-
-
-    return `<!doctype html><html><head><title>${title}</title>${styles}</head><body>${body}</body></html>`;
-  }
-
-
-  function triggerDownload(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-    URL.revokeObjectURL(url); a.remove();
-  }
-
-
-  function downloadAsPdf() {
-    const html = getFullDocumentHtml(true); // true keeps page breaks strict
-    document.getElementById('pdf-html-content').value = html;
-    document.getElementById('pdf-form').submit();
-  }
-
-
-  async function downloadAsDocx() {
-    try {
-      const html = getFullDocumentHtml(true);
-      const buffer = await htmlToDocx(html, null, {
-        table: { row: { cantSplit: true } },
-        footer: true, pageNumber: true
-      });
-      triggerDownload(buffer, 'document.docx');
-    } catch (err) {
-      alert('DOCX export failed. Make sure html-to-docx.umd.js is loading locally.');
-      console.error(err);
+  const styles = `<style>
+    /* Page margins (most reliable for PDF/DOCX) */
+    @page {
+      size: A4;
+      /* PDF = 1in top/bottom, 0.75in sides; DOCX = Word-friendly 1in top, 1.25in sides/bottom */
+      margin: ${forDocx ? '1in 1.25in 1.25in 1.25in' : '1in 0.75in 1in 0.75in'};
     }
-  }
 
+    /* Ensure nothing cancels page margins */
+    html, body { margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Merriweather', serif;
+      font-size: 12pt;
+      line-height: 1.6;
+    }
+
+    h1, h2 {
+      font-family: 'Lato', sans-serif;
+      page-break-after: avoid; /* keep heading with first paragraph */
+    }
+
+    /* Force the new page on the chapter wrapper, not a <div> or <br> */
+    section.chapter {
+      display: flow-root;            /* prevents margin-collapsing with first child */
+      break-before: page;
+      page-break-before: always;
+    }
+    /* Do NOT break before the very first chapter */
+    section.chapter.first {
+      break-before: auto;
+      page-break-before: auto;
+    }
+
+    /* Heading sits at the very top of the new page area */
+    h1.chapter-title { margin-top: 0; }
+
+    img { max-width: 100%; height: auto; }
+  </style>`;
+
+  return `<!doctype html><html><head><title>${title}</title>${styles}</head><body>${body}</body></html>`;
+}
+
+// --- PDF Export (client-side) ---
+async function downloadAsPdf() {
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    // Get document HTML
+    const html = getFullDocumentHtml();
+    // Add HTML to PDF (simple, one page)
+    doc.html(html, {
+      callback: function (doc) {
+        doc.save((bookTitleInput.value || 'document') + '.pdf');
+      },
+      x: 10,
+      y: 10,
+      width: 180 // fit to page width
+    });
+  } catch (err) {
+    console.error('PDF export failed (client):', err);
+    alert('PDF export failed. Error: ' + err.message);
+  }
+}
+
+// --- DOCX Export (server-side via API) ---
+async function downloadAsDocx() {
+  try {
+    const html = getFullDocumentHtml(true);
+    const filenameHint = (bookTitleInput.value || 'document').trim() || 'document';
+    const res = await fetch(`${API_BASE}/export/docx`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ html, filenameHint })
+    });
+    if (!res.ok) throw new Error(`DOCX export failed: ${await res.text()}`);
+    const data = await res.json();      // expects: { url: "https://s3..." }
+    window.open(data.url, '_blank');    // or: window.location.href = data.url;
+  } catch (err) {
+    alert('DOCX export failed. Please try again.');
+    console.error(err);
+  }
+}
 
   function downloadAsHtml() {
     const blob = new Blob([getFullDocumentHtml()], { type: 'text/html' });
     triggerDownload(blob, 'document.html');
   }
-
 
   function downloadAsMarkdown() {
     const td = new TurndownService();
@@ -384,13 +387,11 @@ document.addEventListener('DOMContentLoaded', () => {
     triggerDownload(new Blob([md], { type: 'text/markdown' }), 'document.md');
   }
 
-
   function downloadAsTxt() {
     const tmp = document.createElement('div');
     tmp.innerHTML = getFullDocumentHtml();
     triggerDownload(new Blob([tmp.innerText], { type: 'text/plain' }), 'document.txt');
   }
-
 
   // --- Toolbar ---
   let savedCursor = null;
@@ -408,13 +409,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.execCommand('insertImage', false, src);
   }
 
-
   function handleToolbarClick(e) {
     const el = e.target.closest('[data-command]');
     if (!el) return;
     const cmd = el.dataset.command;
     let val = el.value || null;
-
 
     if (cmd === 'createLink') {
       val = prompt('Enter URL:');
@@ -428,7 +427,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-
   // --- Download dropdown / modal basics ---
   function handleDownloadClick() {
     if (userStatus !== 'subscribed') {
@@ -440,12 +438,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   function closeModal(modal) { if (modal) modal.classList.add('hidden'); }
 
-
   // --- Delete Project (clear everything) ---
   function deleteProject() {
     const ok = confirm('Delete this entire project? This cannot be undone.');
     if (!ok) return;
-
 
     localStorage.removeItem('craftedScriptorProject');
     // Reset state
@@ -462,7 +458,6 @@ document.addEventListener('DOMContentLoaded', () => {
     bookSubtitleInput.value = '';
     renderStructure();
   }
-
 
   // --- DOCX Upload into selected section ---
   function handleManuscriptClick() {
@@ -497,31 +492,92 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   }
 
+  // --- Canvas Size Controls ---
+  const canvasSizeSelect = document.getElementById('canvas-size-select');
+  const customSizeFields = document.getElementById('custom-size-fields');
+  const customWidthInput = document.getElementById('custom-width');
+  const customHeightInput = document.getElementById('custom-height');
+  const customUnitSelect = document.getElementById('custom-unit');
+
+  // Standard sizes in inches
+  const canvasSizes = {
+    A4: { width: 8.27, height: 11.69, unit: 'in' },
+    A5: { width: 5.83, height: 8.27, unit: 'in' },
+    Letter: { width: 8.5, height: 11, unit: 'in' },
+    Workbook: { width: 8.5, height: 11, unit: 'in' }
+  };
+
+  // Convert to pixels
+  function toPixels(value, unit) {
+    if (unit === 'in') return value * 96;
+    if (unit === 'mm') return value * 96 / 25.4;
+    return value; // px
+  }
+
+  let globalCanvasSize = { ...canvasSizes['Letter'] };
+
+  function updateCanvasSize() {
+    let size;
+    if (canvasSizeSelect.value === 'Custom') {
+      const width = parseFloat(customWidthInput.value) || 8.5;
+      const height = parseFloat(customHeightInput.value) || 11;
+      const unit = customUnitSelect.value;
+      size = { width, height, unit };
+    } else {
+      size = canvasSizes[canvasSizeSelect.value] || canvasSizes['Letter'];
+    }
+    globalCanvasSize = size;
+    applyCanvasSize();
+  }
+
+  function applyCanvasSize() {
+    const pxWidth = toPixels(globalCanvasSize.width, globalCanvasSize.unit);
+    const pxHeight = toPixels(globalCanvasSize.height, globalCanvasSize.unit);
+    const canvasArea = document.getElementById('canvas-area');
+    if (canvasArea) {
+      canvasArea.style.width = pxWidth + 'px';
+      canvasArea.style.height = pxHeight + 'px';
+    }
+    // Optionally, update placeholder for consistency
+    writingCanvasPlaceholder.style.width = pxWidth + 'px';
+    writingCanvasPlaceholder.style.height = pxHeight + 'px';
+  }
+
+  // Show/hide custom fields
+  canvasSizeSelect.addEventListener('change', () => {
+    if (canvasSizeSelect.value === 'Custom') {
+      customSizeFields.classList.remove('hidden');
+    } else {
+      customSizeFields.classList.add('hidden');
+    }
+    updateCanvasSize();
+  });
+  [customWidthInput, customHeightInput, customUnitSelect].forEach(input => {
+    input.addEventListener('input', updateCanvasSize);
+    input.addEventListener('change', updateCanvasSize);
+  });
+
+  // Initial size
+  updateCanvasSize();
 
   // --- Events ---
   saveButton.addEventListener('click', saveProject);
-
 
   structureList.addEventListener('click', handleOutlineClick);
   structureList.addEventListener('contextmenu', handleOutlineContextMenu);
   addSectionButton.addEventListener('click', addNewSection);
 
-
   setBackgroundButton.addEventListener('click', handleSetBackgroundClick);
   clearBackgroundButton.addEventListener('click', handleClearBackgroundClick);
   backgroundFileInput.addEventListener('change', handleFileSelect);
 
-
   uploadManuscriptButton.addEventListener('click', handleManuscriptClick);
   manuscriptFileInput.addEventListener('change', handleManuscriptFile);
-
 
   editorToolbar.addEventListener('click', handleToolbarClick);
   editorToolbar.addEventListener('change', handleToolbarClick);
 
-
   promptButton.addEventListener('click', getInspiration);
-
 
   // download menu
   downloadDropdownButton.addEventListener('click', handleDownloadClick);
@@ -531,7 +587,6 @@ document.addEventListener('DOMContentLoaded', () => {
   downloadMdButton.addEventListener('click', e => { e.preventDefault(); downloadAsMarkdown(); });
   downloadTxtButton.addEventListener('click', e => { e.preventDefault(); downloadAsTxt(); });
 
-
   // modals
   document.querySelectorAll('.modal-close-button').forEach(btn =>
     btn.addEventListener('click', ev => closeModal(ev.target.closest('.modal-overlay')))
@@ -540,26 +595,42 @@ document.addEventListener('DOMContentLoaded', () => {
     overlay.addEventListener('click', ev => { if (ev.target === overlay) closeModal(overlay); })
   );
 
-
   // image modal internals
   const imageInsertModal = document.getElementById('image-insert-modal');
   const dropZone = document.getElementById('drop-zone');
   const imageFileInput = document.getElementById('image-file-input');
-
+  const imageSizeSelect = document.getElementById('image-size');
+  const imageAlignSelect = document.getElementById('image-align');
 
   document.getElementById('browse-file-button')
     .addEventListener('click', () => imageFileInput.click());
 
+  function insertStyledImage(src) {
+    const size = imageSizeSelect ? imageSizeSelect.value : '100';
+    const align = imageAlignSelect ? imageAlignSelect.value : 'center';
+    let style = `width:${size}%;max-width:100%;height:auto;`;
+    let divStyle = '';
+    if (align === 'left') divStyle = 'text-align:left;';
+    else if (align === 'center') divStyle = 'text-align:center;';
+    else if (align === 'right') divStyle = 'text-align:right;';
+    const html = `<div style="${divStyle}"><img src="${src}" style="${style}" /></div>`;
+    if (savedCursor) {
+      const sel = window.getSelection();
+      sel.removeAllRanges(); sel.addRange(savedCursor);
+    } else {
+      editor.focus();
+    }
+    document.execCommand('insertHTML', false, html);
+  }
 
   imageFileInput.addEventListener('change', e => {
     if (e.target.files.length) {
       const file = e.target.files[0];
       const r = new FileReader();
-      r.onload = ev => { insertImageAtCursor(ev.target.result); closeModal(imageInsertModal); };
+      r.onload = ev => { insertStyledImage(ev.target.result); closeModal(imageInsertModal); };
       r.readAsDataURL(file);
     }
   });
-
 
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
   dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
@@ -573,7 +644,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-
   // editor word count
   function updateWordCount() {
     const text = editor.innerText || '';
@@ -584,161 +654,41 @@ document.addEventListener('DOMContentLoaded', () => {
   editor.addEventListener('input', updateWordCount);
   goalInput.addEventListener('change', updateWordCount);
 
-
   // Delete project
   if (deleteProjectButton) deleteProjectButton.addEventListener('click', deleteProject);
-
 
   // init
   loadProject();
   updateWordCount();
 
-
   // Focus editor so paste works immediately
   editor.setAttribute('contenteditable', 'true');
 });
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// Remove window.htmlDocx and wireDeleteProject references
 document.addEventListener('DOMContentLoaded', () => {
-  try { wireDeleteProject(); } catch (e) { console.error('Delete wiring failed:', e); }
+  try {  } catch (e) { console.error('Delete wiring failed:', e); }
 });
 
 (function wireExportsOnce(){
   if (window._wiredExports) return;
   window._wiredExports = true;
 
-  function findBtnByText(txt) {
-    txt = txt.toLowerCase();
-    return Array.from(document.querySelectorAll('button, [role="button"], .btn'))
-      .find(b => (b.textContent || "").trim().toLowerCase() === txt);
-  }
-
-  function ensureTestButtons() {
-    let bar = document.getElementById('export-test-bar');
-    if (!bar) {
-      bar = document.createElement('div');
-      bar.id = 'export-test-bar';
-      bar.style.position = 'fixed';
-      bar.style.right = '12px';
-      bar.style.bottom = '12px';
-      bar.style.padding = '8px';
-      bar.style.background = 'rgba(0,0,0,.6)';
-      bar.style.color = '#fff';
-      bar.style.borderRadius = '8px';
-      bar.style.zIndex = 99999;
-      bar.style.font = '14px/1.2 system-ui, sans-serif';
-      document.body.appendChild(bar);
-    }
-    return bar;
-  }
-
-  async function safe(fn) {
-    try { await fn(); } catch (e) { alert(e?.message || e); console.error(e); }
-  }
-
-  // PDF: prefer existing "Download Project" button
-  const pdfBtn = findBtnByText('download project');
-  if (pdfBtn) {
-    pdfBtn.addEventListener('click', () => safe(exportPDF));
-  } else {
-    const bar = ensureTestButtons();
-    const b = document.createElement('button');
-    b.textContent = 'Download PDF';
-    b.style.marginRight = '8px';
-    b.onclick = () => safe(exportPDF);
-    bar.appendChild(b);
-  }
-
-  // DOCX: try a button whose label includes "docx" and "download"
-  const docxBtn = Array.from(document.querySelectorAll('button, [role="button"], .btn'))
-    .find(b => {
-      const t = (b.textContent || '').toLowerCase();
-      return t.includes('docx') && t.includes('download');
-    });
-
-  if (docxBtn) {
-    docxBtn.addEventListener('click', () => safe(exportDOCX));
-  } else {
-    const bar = ensureTestButtons();
-    const b = document.createElement('button');
-    b.textContent = 'Download DOCX';
-    b.onclick = () => safe(exportDOCX);
-    bar.appendChild(b);
-  }
+  // Remove legacy exportPDF and exportDOCX references
 })();
+
+// --- Download helper ---
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 100);
+}
+
+

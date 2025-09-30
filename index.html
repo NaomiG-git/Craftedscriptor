@@ -49,6 +49,31 @@
         <div class="header-logo">Crafted Scriptor</div>
 
 
+        <!-- Canvas Size Controls (moved to top toolbar) -->
+        <div class="canvas-size-controls toolbar-group">
+          <label for="canvas-size-select">Canvas Size:</label>
+          <select id="canvas-size-select">
+            <option value="A4">A4 (8.27 x 11.69 in)</option>
+            <option value="A5">A5 (5.83 x 8.27 in)</option>
+            <option value="Letter">Letter (8.5 x 11 in)</option>
+            <option value="Workbook">Workbook (8.5 x 11 in)</option>
+            <option value="Custom">Custom</option>
+          </select>
+          <div id="custom-size-fields" class="hidden">
+            <label for="custom-width">Width:</label>
+            <input type="number" id="custom-width" min="1" step="0.01" value="8.5">
+            <label for="custom-height">Height:</label>
+            <input type="number" id="custom-height" min="1" step="0.01" value="11">
+            <select id="custom-unit">
+              <option value="in">inches</option>
+              <option value="mm">mm</option>
+              <option value="px">pixels</option>
+            </select>
+          </div>
+        </div>
+        <!-- End Canvas Size Controls -->
+
+
         <!-- Save Project -->
         <button id="save-button" class="header-button save-button">
           <i class="fas fa-save"></i> Save Project
@@ -250,11 +275,9 @@
             <button class="toolbar-button" data-command="insertImage"><i class="fas fa-image"></i></button>
             <button class="toolbar-button" data-command="removeFormat"><i class="fas fa-eraser"></i></button>
           </div>
-
-
-          <div id="editor" contenteditable="true"></div>
-
-
+          <div id="canvas-area">
+            <div id="editor" contenteditable="true"></div>
+          </div>
           <div class="goal-tracker">
             <span>Daily Goal:</span>
             <input type="number" id="goal-input" value="500">
@@ -294,6 +317,21 @@
           <input type="file" id="image-file-input" accept="image/png, image/jpeg, image/gif" class="hidden">
         </div>
         <div id="upload-status"></div>
+        <!-- Image size and alignment controls -->
+        <div class="image-controls">
+          <label for="image-size">Size:</label>
+          <select id="image-size">
+            <option value="25">Small (25%)</option>
+            <option value="50">Medium (50%)</option>
+            <option value="100">Large (100%)</option>
+          </select>
+          <label for="image-align">Align:</label>
+          <select id="image-align">
+            <option value="left">Left</option>
+            <option value="center">Center</option>
+            <option value="right">Right</option>
+          </select>
+        </div>
       </div>
       <div id="url-tab" class="tab-content">
         <p>Enter the public URL of an image.</p>
@@ -314,16 +352,17 @@
   <input type="file" id="manuscript-file-input" accept=".docx" class="hidden">
 
 
-  <!-- PDF POST form -->
-  <form id="pdf-form" action="/generate-pdf" method="POST" target="_blank" class="hidden">
-    <input type="hidden" name="htmlContent" id="pdf-html-content">
-  </form>
+ 
 
 
   <!-- Scripts (order matters) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://unpkg.com/docx@8.4.0/build/docx.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <script src="./html-to-docx.umd.js"></script>
   <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 
   <!-- Your prompts library must define window.PROMPTS -->
@@ -331,7 +370,7 @@
 
 
   <!-- App logic -->
-  <script src="main.js?v=5"></script>
+  <script type="module" src="main.js?v=5"></script>
 </body>
 </html>
 

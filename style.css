@@ -365,11 +365,15 @@ body::before{
 
 
 #editor {
-  flex-grow: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 100px;
+  background: transparent;
+  outline: none;
   padding: 20px 40px;
-  font-size: 16px; line-height: 1.6;
-  overflow-y: auto; outline: none;
-  background-color: var(--panel-bg); /* token, not hard-coded */
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-y: auto;
 }
 
 
@@ -521,19 +525,53 @@ body::before{
   background: rgba(166, 102, 102, 0.12);
 }
 
+/* Canvas Size Controls (toolbar) */
+.canvas-size-controls.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 24px;
+}
+#canvas-size-select, #custom-width, #custom-height, #custom-unit {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  font-size: 14px;
+}
+#custom-size-fields {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#custom-size-fields.hidden {
+  display: none;
+}
+/* Remove bottom panel margin for canvas size section */
+#canvas-size-section { display: none; }
 
+#export-test-bar{display:none !important;}
 
+#canvas-area {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  margin: 0 auto;
+  background: var(--panel-bg);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+.image-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+#image-size, #image-align {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  font-size: 14px;
+}
