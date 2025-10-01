@@ -1,3 +1,7 @@
+[build]
+  # Publish directly from the repository root (no build step)
+  publish = "."
+
 [functions]
   directory = "netlify/functions"
 

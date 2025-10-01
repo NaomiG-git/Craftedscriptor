@@ -13,6 +13,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@400;700&family=Playfair+Display:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet"/>
 
+  <!-- Speed up and stabilize calls to AWS API Gateway -->
+  <link rel="dns-prefetch" href="//8fcufgvt4m.execute-api.ca-central-1.amazonaws.com" />
+  <link rel="preconnect" href="https://8fcufgvt4m.execute-api.ca-central-1.amazonaws.com" crossorigin />
+
 
   <style>
     /* Minimal styles to position the small delete (×) button on the far right */
@@ -109,9 +113,6 @@
           <div id="download-options-menu" class="dropdown-menu hidden">
             <a href="#" id="download-pdf"><i class="fas fa-file-pdf"></i> PDF (Print Ready)</a>
             <a href="#" id="download-docx"><i class="fas fa-file-word"></i> DOCX (Word)</a>
-            <a href="#" id="download-html"><i class="fas fa-file-code"></i> HTML</a>
-            <a href="#" id="download-md"><i class="fab fa-markdown"></i> Markdown</a>
-            <a href="#" id="download-txt"><i class="fas fa-file-alt"></i> Plain Text (TXT)</a>
           </div>
         </div>
       </div>
@@ -291,6 +292,18 @@
 
 
   <!-- Modals -->
+  <div id="subscribe-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <button class="modal-close-button">&times;</button>
+      <h3>Unlock Your Masterpiece!</h3>
+      <p>Subscribe to Crafted Scriptor to download in all formats, including PDF and DOCX.</p>
+      <a href="https://craftedscriptor.com/pricing" target="_blank" class="subscribe-link">
+        <button class="primary-action-button">Subscribe Now</button>
+      </a>
+    </div>
+  </div>
+
+
   <div id="image-insert-modal" class="modal-overlay hidden">
     <div class="modal-content">
       <button class="modal-close-button">&times;</button>
@@ -340,6 +353,9 @@
   <input type="file" id="background-file-input" accept="image/*" class="hidden">
   <input type="file" id="manuscript-file-input" class="hidden">
 
+  <!-- Toast container -->
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
 
  
 
@@ -348,6 +364,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://unpkg.com/docx@8.4.0/build/docx.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="./html-to-docx.umd.js"></script>
   <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
@@ -359,7 +376,7 @@
 
 
   <!-- App logic -->
-  <script type="module" src="main.js?v=5"></script>
+  <script type="module" src="main.js?v=6"></script>
 </body>
 </html>
 

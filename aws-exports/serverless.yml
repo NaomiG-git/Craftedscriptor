@@ -46,7 +46,7 @@ resources:
     ExportsBucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: crafted-scriptor-export-prod
+        BucketName: crafted-scriptor-exports
       DeletionPolicy: Retain
 
 

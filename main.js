@@ -3,8 +3,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Client-side export libs (provided by script tags) ---
   const TurndownService = window.TurndownService;
   const htmlToDocx = window.htmlToDocx; // from html-to-docx.umd.js
-  // ⬇️ ADD: API Gateway base URL (replace with your real URL)
-  const API_BASE = 'https://8fcurfgv4m.execute-api.ca-central-1.amazonaws.com';
+  // ⬇️ API endpoints
+  // Keep PDF using API_BASE if configured later. For DOCX we use the full URL explicitly as requested.
+  const API_BASE = 'https://8fcufgvt4m.execute-api.ca-central-1.amazonaws.com';
+  // Derive DOCX endpoint from the single source of truth to avoid hostname drift/typos
+  const DOCX_EXPORT_URL = `${API_BASE}/export/docx`;
 
 
   // --- Elements ---
@@ -38,6 +41,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const deleteProjectButton = document.getElementById('delete-project-button');
 
+  // --- Toasts ---
+  function showToast(message, type = 'info', title = '') {
+    const container = document.getElementById('toast-container');
+    if (!container) { alert(message); return; }
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-info';
+    toast.innerHTML = `
+      <div class="icon"><i class="fa-solid ${icon}"></i></div>
+      <div class="content">
+        ${title ? `<div class="title">${title}</div>` : ''}
+        <div class="message">${message}</div>
+      </div>
+      <button class="close" aria-label="Close">&times;</button>
+    `;
+    const close = () => {
+      toast.style.animation = 'toast-out 200ms ease forwards';
+      setTimeout(() => container.removeChild(toast), 180);
+    };
+    toast.querySelector('.close').addEventListener('click', close);
+    container.appendChild(toast);
+    setTimeout(close, 4000);
+  }
+
   // --- Theme toggle (optional) ---
   const themeToggle = document.getElementById('theme-toggle');
   if (themeToggle) {
@@ -56,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const downloadOptionsMenu = document.getElementById('download-options-menu');
   const downloadPdfButton = document.getElementById('download-pdf');
   const downloadDocxButton = document.getElementById('download-docx');
+  
   const downloadHtmlButton = document.getElementById('download-html');
   const downloadMdButton = document.getElementById('download-md');
   const downloadTxtButton = document.getElementById('download-txt');
@@ -180,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // If new name already exists, warn and stop
     if (documentStructure.includes(trimmed)) {
-      alert('A section with that name already exists.');
+  showToast('A section with that name already exists.', 'info', 'Duplicate Name');
       return;
     }
 
@@ -273,9 +301,78 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Exports (each section starts on a new page) ---
 function cleanTextForExport(html) {
-  // Replace &nbsp; with space
-  let cleaned = html.replace(/&nbsp;/g, ' ');
-  // Collapse multiple spaces
+  // Replace non-breaking spaces with regular spaces
+  let cleaned = (html || '').replace(/&nbsp;/g, ' ');
+
+  // If content contains apparent Markdown (e.g., lines starting with * , -, #), attempt to convert to HTML
+  // Only apply when we detect lack of HTML block tags but presence of markdown markers.
+  const looksLikeMarkdown = /(^|\n)\s*([*\-+]\s+|#{1,6}\s+|>\s+|\d+\.\s+)/.test(cleaned) && !/<\w+[^>]*>/.test(cleaned);
+  try {
+    if (looksLikeMarkdown && window.marked) {
+      cleaned = window.marked.parse(cleaned);
+    }
+  } catch (e) { /* fallback to raw */ }
+
+  // Convert inline markdown markers within existing HTML (e.g., **bold**, *italic*, `code`)
+  try {
+    const skipTags = new Set(['CODE','PRE','A','SCRIPT','STYLE']);
+    const container = document.createElement('div');
+    container.innerHTML = cleaned;
+
+    function transformTextNode(node) {
+      const text = node.nodeValue;
+      if (!text || !/[`*]/.test(text)) return; // quick exit
+      const frag = document.createDocumentFragment();
+      let i = 0;
+
+      const patterns = [
+        { re: /`([^`]+?)`/, wrap: (t)=>{ const c=document.createElement('code'); c.textContent=t; return c; } },
+        { re: /\*\*([^*]+?)\*\*/, wrap: (t)=>{ const b=document.createElement('strong'); b.textContent=t; return b; } },
+        { re: /(?<!\*)\*([^*]+?)\*(?!\*)/, wrap: (t)=>{ const em=document.createElement('em'); em.textContent=t; return em; } }
+      ];
+
+      let remaining = text;
+      while (remaining.length) {
+        let earliest = null;
+        let pat = null;
+        for (const p of patterns) {
+          const m = remaining.match(p.re);
+          if (m) {
+            const idx = m.index;
+            if (earliest === null || idx < earliest) { earliest = idx; pat = { m, p }; }
+          }
+        }
+        if (earliest === null) {
+          frag.appendChild(document.createTextNode(remaining));
+          break;
+        }
+        if (earliest > 0) frag.appendChild(document.createTextNode(remaining.slice(0, earliest)));
+        const content = pat.m[1];
+        frag.appendChild(pat.p.wrap(content));
+        remaining = remaining.slice(earliest + pat.m[0].length);
+      }
+      node.parentNode.replaceChild(frag, node);
+    }
+
+    function walk(node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        // only transform if parent chain does not include skip tags
+        let cur = node.parentNode;
+        while (cur) { if (skipTags.has(cur.nodeName)) return; cur = cur.parentNode; }
+        transformTextNode(node);
+        return;
+      }
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        // process children snapshot to avoid live list issues
+        const children = Array.from(node.childNodes);
+        for (const child of children) walk(child);
+      }
+    }
+    walk(container);
+    cleaned = container.innerHTML;
+  } catch (e) { /* non-fatal */ }
+
+  // Normalize multiple spaces
   cleaned = cleaned.replace(/ +/g, ' ');
   // Remove spaces before punctuation
   cleaned = cleaned.replace(/\s+([,.!?;:])/g, '$1');
@@ -294,7 +391,26 @@ function getFullDocumentHtml(forDocx = false) {
     const firstClass = idx === 0 ? " first" : "";
     body += `<section class="chapter${firstClass}"><h1 class="chapter-title">${name}</h1>${html}</section>`;
   });
-  const styles = `<style>body{font-family:'Merriweather',serif;font-size:12pt;line-height:1.5;}h1,h2,h3{font-family:'Lato',sans-serif;}img{max-width:100%;height:auto;}p{margin:0 0 12pt;}@media print{h1{break-before:page;page-break-before:always;margin-top:0;padding-top:0;}body{font-size:12pt;line-height:1.5;word-spacing:normal;letter-spacing:normal;white-space:normal;}p{margin:0 0 12pt;}#editor,body{padding:0!important;min-height:0!important;}@page{margin:1in;}}</style>`;
+  const styles = `<style>
+    body{font-family:'Merriweather',serif;font-size:12pt;line-height:1.5;}
+    h1,h2,h3{font-family:'Lato',sans-serif;}
+    img{max-width:100%;height:auto;}
+    p{margin:0 0 12pt;}
+    ul,ol{margin:0 0 12pt 24pt;}
+    li{margin:4pt 0;}
+    blockquote{margin:12pt 24pt;border-left:3px solid #ccc;padding-left:12pt;color:#555;}
+    pre,code{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;}
+    pre{background:#f6f8fa;border:1px solid #e1e4e8;border-radius:4px;padding:8pt;overflow:auto;margin:0 0 12pt;}
+    table{border-collapse:collapse;margin:0 0 12pt;width:100%;}
+    th,td{border:1px solid #ddd;padding:6pt;}
+    @media print{
+      h1{break-before:page;page-break-before:always;margin-top:0;padding-top:0;}
+      body{font-size:12pt;line-height:1.5;word-spacing:normal;letter-spacing:normal;white-space:normal;}
+      p{margin:0 0 12pt;}
+      #editor,body{padding:0!important;min-height:0!important;}
+      @page{margin:1in;}
+    }
+  </style>`;
   return `<!doctype html><html><head><title>${title}</title>${styles}</head><body>${body}</body></html>`;
 }
 
@@ -318,7 +434,7 @@ async function downloadAsPdf() {
     const data = await res.json();
     window.open(data.url, '_blank');
   } catch (err) {
-    alert('PDF export failed. Please try again.');
+  showToast('PDF export failed. Please try again.', 'error', 'Export Error');
     console.error(err);
   }
 }
@@ -348,24 +464,76 @@ function getPageSizeAndMargins() {
 
 async function downloadAsDocx() {
   try {
-    const html = getFullDocumentHtml(true);
+  const html = getFullDocumentHtml(true);
+    // Inject page-breaks for DOCX only: make each chapter H1 start on a new page, except the first
+    function addDocxPageBreaks(htmlStr){
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlStr, 'text/html');
+        const chapters = Array.from(doc.querySelectorAll('section.chapter'));
+        chapters.forEach((sec, idx) => {
+          if (idx === 0) return; // keep first chapter on same page
+          // Insert an explicit page-break block BEFORE the section (top-level block is more reliable)
+          const pb = doc.createElement('div');
+          pb.setAttribute('style', 'page-break-before: always; break-before: page;');
+          if (sec.parentNode) {
+            sec.parentNode.insertBefore(pb, sec);
+          } else {
+            // Fallback: if no parent, keep as first child
+            sec.insertBefore(pb, sec.firstChild);
+          }
+          // Also reinforce on the chapter heading itself
+          const h = sec.querySelector('h1.chapter-title');
+          if (h) {
+            const existing = h.getAttribute('style') || '';
+            h.setAttribute('style', (existing + ';page-break-before: always; break-before: page;').replace(/^;+/,'').trim());
+          }
+        });
+        // Also add page-break-after to each section except the last, to further enforce separation
+        chapters.forEach((sec, idx) => {
+          if (idx === chapters.length - 1) return; // skip last
+          const tail = doc.createElement('div');
+          tail.setAttribute('style', 'page-break-after: always; break-after: page;');
+          sec.appendChild(tail);
+        });
+        return '<!doctype html>' + doc.documentElement.outerHTML;
+      } catch { return htmlStr; }
+    }
+    const htmlForDocx = addDocxPageBreaks(html);
     const filenameHint = (bookTitleInput.value || 'document').trim() || 'document';
     const { widthTwips, heightTwips, marginTwips } = getPageSizeAndMargins();
-    const res = await fetch(`${API_BASE}/export/docx`, {
+
+    // Use server (returns a presigned URL)
+    const res = await fetch(DOCX_EXPORT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        html,
+        html: htmlForDocx,
         filenameHint,
         pageSize: { width: widthTwips, height: heightTwips },
         margins: { top: marginTwips, right: marginTwips, bottom: marginTwips, left: marginTwips }
       })
     });
-    if (!res.ok) throw new Error(`DOCX export failed: ${await res.text()}`);
-    const data = await res.json();
-    window.open(data.url, '_blank');
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`DOCX export failed (${res.status}): ${txt || 'Unknown error'}`);
+    }
+
+    // Handle either JSON response with { url } or direct blob (defensive)
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await res.json();
+      if (data && data.url) {
+        window.open(data.url, '_blank');
+      } else {
+        throw new Error('Unexpected response: missing download URL');
+      }
+    } else {
+      const blob = await res.blob();
+      triggerDownload(blob, `${filenameHint || 'document'}.docx`);
+    }
   } catch (err) {
-    alert('DOCX export failed. Please try again.');
+  showToast('DOCX export failed. Please check your internet connection or try again in a moment.', 'error', 'Export Error');
     console.error(err);
   }
 }
@@ -423,7 +591,10 @@ async function downloadAsDocx() {
 
   // --- Download dropdown / modal basics ---
   function handleDownloadClick() {
-    // Removed login/subscription check
+    if (userStatus !== 'subscribed') {
+      subscribeModal.classList.remove('hidden');
+      return;
+    }
     downloadOptionsMenu.classList.toggle('hidden');
     downloadDropdownButton.parentElement.classList.toggle('open');
   }
@@ -453,7 +624,7 @@ async function downloadAsDocx() {
   // --- DOCX Upload into selected section ---
   function handleManuscriptClick() {
     if (!activeSection) {
-      alert('Select a section in the outline first, then upload.');
+  showToast('Select a section in the outline first, then upload.', 'info');
       return;
     }
     manuscriptFileInput.click();
@@ -462,7 +633,7 @@ async function downloadAsDocx() {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     if (!/\.docx$/i.test(file.name)) {
-      alert('Please choose a .docx file.');
+  showToast('Please choose a .docx file.', 'info');
       return;
     }
     mammoth.convertToHtml({ arrayBuffer: file.arrayBuffer() })
@@ -479,7 +650,7 @@ async function downloadAsDocx() {
       })
       .catch(err => {
         console.error(err);
-        alert('Upload failed. (Mammoth conversion error)');
+  showToast('Upload failed. (Mammoth conversion error)', 'error', 'Upload Error');
       });
   }
 
@@ -574,9 +745,10 @@ async function downloadAsDocx() {
   downloadDropdownButton.addEventListener('click', handleDownloadClick);
   downloadPdfButton.addEventListener('click', e => { e.preventDefault(); downloadAsPdf(); });
   downloadDocxButton.addEventListener('click', e => { e.preventDefault(); downloadAsDocx(); });
-  downloadHtmlButton.addEventListener('click', e => { e.preventDefault(); downloadAsHtml(); });
-  downloadMdButton.addEventListener('click', e => { e.preventDefault(); downloadAsMarkdown(); });
-  downloadTxtButton.addEventListener('click', e => { e.preventDefault(); downloadAsTxt(); });
+  
+  if (downloadHtmlButton) downloadHtmlButton.addEventListener('click', e => { e.preventDefault(); downloadAsHtml(); });
+  if (downloadMdButton) downloadMdButton.addEventListener('click', e => { e.preventDefault(); downloadAsMarkdown(); });
+  if (downloadTxtButton) downloadTxtButton.addEventListener('click', e => { e.preventDefault(); downloadAsTxt(); });
 
   // modals
   document.querySelectorAll('.modal-close-button').forEach(btn =>
@@ -654,6 +826,106 @@ async function downloadAsDocx() {
 
   // Focus editor so paste works immediately
   editor.setAttribute('contenteditable', 'true');
+
+  // --- Search and Replace (global) ---
+  function escapeRegex(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  function handleSearchReplace() {
+    const searchInput = document.getElementById('search-word');
+    const replaceInput = document.getElementById('replace-word');
+    const searchWord = (searchInput?.value ?? '').trim();
+    const replaceWord = replaceInput?.value ?? '';
+    if (!searchWord) return;
+
+    // Sync current editor content back to the model before replacing across sections
+    if (activeSection) {
+      sectionContents[activeSection] = editor.innerHTML;
+    }
+
+    // Simple global, case-insensitive replace operating on TEXT NODES (DOM-aware)
+    const pattern = escapeRegex(searchWord);
+    let re;
+    try { re = new RegExp(pattern, 'gi'); } catch (e) { console.error('Invalid search pattern', e); return; }
+
+    function replaceInDomText(rootEl, regex, replacement) {
+      let count = 0;
+      const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+          const p = node.parentNode;
+          if (!p) return NodeFilter.FILTER_REJECT;
+          const tag = p.nodeName;
+          if (tag === 'SCRIPT' || tag === 'STYLE') return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      });
+      let cur;
+      while ((cur = walker.nextNode())) {
+        const text = cur.nodeValue || '';
+        if (!text) continue;
+        const reForCount = new RegExp(regex.source, regex.flags);
+        const matches = text.match(reForCount);
+        if (matches && matches.length) {
+          count += matches.length;
+          const reForReplace = new RegExp(regex.source, regex.flags);
+          cur.nodeValue = text.replace(reForReplace, () => replacement);
+        }
+      }
+      return count;
+    }
+
+    function replaceInHtmlString(htmlStr, regex, replacement) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = htmlStr || '';
+      const count = replaceInDomText(tmp, regex, replacement);
+      return { html: tmp.innerHTML, count };
+    }
+
+    let total = 0;
+    if (activeSection) {
+      total += replaceInDomText(editor, re, replaceWord);
+      sectionContents[activeSection] = editor.innerHTML;
+    } else {
+      Object.keys(sectionContents).forEach(section => {
+        const htmlStr = typeof sectionContents[section] === 'string' ? sectionContents[section] : '';
+        const { html, count } = replaceInHtmlString(htmlStr, re, replaceWord);
+        sectionContents[section] = html;
+        total += count;
+      });
+    }
+
+    saveProject();
+    updateWordCount();
+    if (total > 0) {
+      showToast(`Replaced ${total} occurrence${total === 1 ? '' : 's'} of "${searchWord}".`, 'success', 'Find & Replace');
+    } else {
+      showToast('No matches found.', 'info', 'Find & Replace');
+    }
+  }
+
+  function initSearchReplaceBar() {
+    const bar = document.getElementById('search-replace-bar');
+    if (!bar || bar.dataset.initialized === 'true') return;
+    bar.dataset.initialized = 'true';
+    const searchReplaceDiv = document.createElement('div');
+    searchReplaceDiv.style.display = 'inline-block';
+    searchReplaceDiv.innerHTML = `
+      <label>Search & Replace:&nbsp;
+        <input type="text" id="search-word" placeholder="Find..." style="width:130px;">
+        <input type="text" id="replace-word" placeholder="Replace with..." style="width:150px;">
+        <button id="search-replace-btn" class="header-button" style="margin-left:8px;">Replace All</button>
+      </label>
+    `;
+    bar.appendChild(searchReplaceDiv);
+    const btn = document.getElementById('search-replace-btn');
+    if (btn) btn.addEventListener('click', handleSearchReplace);
+    const sEl = document.getElementById('search-word');
+    const rEl = document.getElementById('replace-word');
+    [sEl, rEl].forEach(el => el && el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); handleSearchReplace(); }
+    }));
+  }
+
+  // Initialize the search bar now that DOM and editor are ready
+  initSearchReplaceBar();
 });
 
 // Remove window.htmlDocx and wireDeleteProject references
@@ -664,64 +936,7 @@ document.addEventListener('DOMContentLoaded', () => {
 (function wireExportsOnce(){
   if (window._wiredExports) return;
   window._wiredExports = true;
-
-  // Remove legacy exportPDF and exportDOCX references
+  // Remove legacy exportPDF and exportDOCX references (intentionally left blank)
 })();
-
-// --- Download helper ---
-function triggerDownload(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, 100);
-}
-
-// --- Search and Replace (global) ---
-function handleSearchReplace() {
-  const searchInput = document.getElementById('search-word');
-  const replaceInput = document.getElementById('replace-word');
-  const searchWord = searchInput.value;
-  const replaceWord = replaceInput.value;
-  if (!searchWord) return;
-  // Replace in all sectionContents
-  Object.keys(sectionContents).forEach(section => {
-    if (sectionContents[section]) {
-      // Use regex for global, case-insensitive replace
-      const re = new RegExp(searchWord, 'gi');
-      sectionContents[section] = sectionContents[section].replace(re, replaceWord);
-    }
-  });
-  // If editing, update editor content
-  if (activeSection && editor.innerHTML) {
-    const re = new RegExp(searchWord, 'gi');
-    editor.innerHTML = editor.innerHTML.replace(re, replaceWord);
-  }
-  saveProject();
-  updateWordCount();
-  alert(`All occurrences of "${searchWord}" replaced with "${replaceWord}".`);
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  const bar = document.getElementById('search-replace-bar');
-  if (bar) {
-    const searchReplaceDiv = document.createElement('div');
-    searchReplaceDiv.style.display = 'inline-block';
-    searchReplaceDiv.innerHTML = `
-      <label>Search & Replace:&nbsp;
-        <input type="text" id="search-word" placeholder="Find..." style="width:100px;">
-        <input type="text" id="replace-word" placeholder="Replace with..." style="width:120px;">
-        <button id="search-replace-btn">Replace All</button>
-      </label>
-    `;
-    bar.appendChild(searchReplaceDiv);
-    document.getElementById('search-replace-btn').addEventListener('click', handleSearchReplace);
-  }
-});
 
 
