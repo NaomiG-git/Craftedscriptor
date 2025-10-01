@@ -1,0 +1,112 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Crafted Scriptor static site on S3 + CloudFront (OAI)
+
+Parameters:
+  SiteBucketName:
+    Type: String
+    Description: Globally-unique S3 bucket name for the website (e.g., crafted-scriptor-site-prod)
+  PriceClass:
+    Type: String
+    Default: PriceClass_100
+    AllowedValues:
+      - PriceClass_100
+      - PriceClass_200
+      - PriceClass_All
+    Description: CloudFront price class (edge coverage)
+  Alias:
+    Type: String
+    Default: ''
+    Description: Optional custom domain (e.g., app.example.com)
+  AcmCertificateArn:
+    Type: String
+    Default: ''
+    Description: Optional ACM cert ARN in us-east-1 (required if Alias is set)
+
+Conditions:
+  UseAlias: !Not [!Equals [!Ref Alias, '']]
+  UseCert: !Not [!Equals [!Ref AcmCertificateArn, '']]
+
+Resources:
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref SiteBucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+
+  OriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub OAI for ${SiteBucketName}
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
+            Action:
+              - s3:GetObject
+            Resource: !Sub arn:aws:s3:::${SiteBucketName}/*
+          - Sid: AllowCloudFrontList
+            Effect: Allow
+            Principal:
+              CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
+            Action:
+              - s3:ListBucket
+            Resource: !Sub arn:aws:s3:::${SiteBucketName}
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        PriceClass: !Ref PriceClass
+        Aliases: !If [UseAlias, [!Ref Alias], []]
+        DefaultRootObject: index.html
+        ViewerCertificate: !If
+          - UseCert
+          - { AcmCertificateArn: !Ref AcmCertificateArn, MinimumProtocolVersion: TLSv1.2_2021, SslSupportMethod: sni-only }
+          - { CloudFrontDefaultCertificate: true }
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt SiteBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${OriginAccessIdentity}
+        DefaultCacheBehavior:
+          AllowedMethods: [GET, HEAD]
+          CachedMethods: [GET, HEAD]
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # CachingOptimized
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+
+Outputs:
+  DistributionId:
+    Description: CloudFront distribution ID
+    Value: !Ref Distribution
+  DistributionDomainName:
+    Description: CloudFront domain to access the site
+    Value: !GetAtt Distribution.DomainName
+  SiteBucketName:
+    Description: The S3 bucket name for the site
+    Value: !Ref SiteBucket

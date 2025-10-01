@@ -278,10 +278,11 @@
           <div id="canvas-area">
             <div id="editor" contenteditable="true"></div>
           </div>
-          <div class="goal-tracker">
+          <div class="goal-tracker" style="display: flex; align-items: center; gap: 1em;">
             <span>Daily Goal:</span>
             <input type="number" id="goal-input" value="500">
             <span id="word-count-display">0 / 500</span>
+            <div id="search-replace-bar" style="margin-left: 2em;"></div>
           </div>
         </div>
       </main>
@@ -290,18 +291,6 @@
 
 
   <!-- Modals -->
-  <div id="subscribe-modal" class="modal-overlay hidden">
-    <div class="modal-content">
-      <button class="modal-close-button">&times;</button>
-      <h3>Unlock Your Masterpiece!</h3>
-      <p>Subscribe to Crafted Scriptor to download in all formats, including PDF and DOCX.</p>
-      <a href="https://craftedscriptor.com/pricing" target="_blank" class="subscribe-link">
-        <button class="primary-action-button">Subscribe Now</button>
-      </a>
-    </div>
-  </div>
-
-
   <div id="image-insert-modal" class="modal-overlay hidden">
     <div class="modal-content">
       <button class="modal-close-button">&times;</button>
@@ -349,7 +338,7 @@
 
   <!-- Hidden inputs -->
   <input type="file" id="background-file-input" accept="image/*" class="hidden">
-  <input type="file" id="manuscript-file-input" accept=".docx" class="hidden">
+  <input type="file" id="manuscript-file-input" class="hidden">
 
 
  

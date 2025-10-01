@@ -4,3 +4,20 @@
 [dev]
   publish = "."
   port = 8888
+
+# Serve SPA fallback (route unknown paths to index.html)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Optional headers for caching (tweak as needed)
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    cache-control = "no-cache"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    cache-control = "public, max-age=31536000, immutable"

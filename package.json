@@ -7,6 +7,8 @@
     "dev": "vite",
     "health": "node scripts/health.js",
     "pdf:smoke": "node scripts/pdf-smoke.js",
+    "pdf:api:smoke": "node scripts/pdf-api-smoke.js",
+    "docx:api:smoke": "node scripts/docx-smoke.js",
     "start": "node server.js"
   },
   "repository": {

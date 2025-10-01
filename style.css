@@ -575,3 +575,17 @@ body::before{
   border: 1px solid var(--border-color);
   font-size: 14px;
 }
+
+
+/* Print styles */
+@media print {
+  h1 { break-before: page; page-break-before: always; margin-top:0; padding-top:0; }
+  body { font-size:12pt; line-height:1.5; word-spacing:normal; letter-spacing:normal; white-space:normal; }
+  p { margin:0 0 12pt; }
+  /* Remove extra padding/min-height on body/editor */
+  #editor, body { padding:0 !important; min-height:0 !important; }
+  @page { margin:1in; }
+}
+
+body { font-size:12pt; line-height:1.5; word-spacing:normal; letter-spacing:normal; white-space:normal; }
+p { margin:0 0 12pt; }

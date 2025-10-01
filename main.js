@@ -272,104 +272,98 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- Exports (each section starts on a new page) ---
+function cleanTextForExport(html) {
+  // Replace &nbsp; with space
+  let cleaned = html.replace(/&nbsp;/g, ' ');
+  // Collapse multiple spaces
+  cleaned = cleaned.replace(/ +/g, ' ');
+  // Remove spaces before punctuation
+  cleaned = cleaned.replace(/\s+([,.!?;:])/g, '$1');
+  return cleaned;
+}
+
 function getFullDocumentHtml(forDocx = false) {
   if (activeSection) sectionContents[activeSection] = editor.innerHTML;
-
   const title = bookTitleInput.value || "Untitled Document";
   const subtitle = bookSubtitleInput.value;
-
   let body = `<h1>${title}</h1>`;
   if (subtitle) body += `<h2>${subtitle}</h2>`;
-
-  // Wrap each chapter in a section that itself forces a new page.
-  // Using a wrapper + flow-root avoids heading margin collapsing.
   documentStructure.forEach((name, idx) => {
-    const html = sectionContents[name] || '<p></p>';
+    let html = sectionContents[name] || '<p></p>';
+    html = cleanTextForExport(html);
     const firstClass = idx === 0 ? " first" : "";
-    body += `<section class="chapter${firstClass}">
-               <h1 class="chapter-title">${name}</h1>
-               ${html}
-             </section>`;
+    body += `<section class="chapter${firstClass}"><h1 class="chapter-title">${name}</h1>${html}</section>`;
   });
-
-  const styles = `<style>
-    /* Page margins (most reliable for PDF/DOCX) */
-    @page {
-      size: A4;
-      /* PDF = 1in top/bottom, 0.75in sides; DOCX = Word-friendly 1in top, 1.25in sides/bottom */
-      margin: ${forDocx ? '1in 1.25in 1.25in 1.25in' : '1in 0.75in 1in 0.75in'};
-    }
-
-    /* Ensure nothing cancels page margins */
-    html, body { margin: 0; padding: 0; }
-
-    body {
-      font-family: 'Merriweather', serif;
-      font-size: 12pt;
-      line-height: 1.6;
-    }
-
-    h1, h2 {
-      font-family: 'Lato', sans-serif;
-      page-break-after: avoid; /* keep heading with first paragraph */
-    }
-
-    /* Force the new page on the chapter wrapper, not a <div> or <br> */
-    section.chapter {
-      display: flow-root;            /* prevents margin-collapsing with first child */
-      break-before: page;
-      page-break-before: always;
-    }
-    /* Do NOT break before the very first chapter */
-    section.chapter.first {
-      break-before: auto;
-      page-break-before: auto;
-    }
-
-    /* Heading sits at the very top of the new page area */
-    h1.chapter-title { margin-top: 0; }
-
-    img { max-width: 100%; height: auto; }
-  </style>`;
-
+  const styles = `<style>body{font-family:'Merriweather',serif;font-size:12pt;line-height:1.5;}h1,h2,h3{font-family:'Lato',sans-serif;}img{max-width:100%;height:auto;}p{margin:0 0 12pt;}@media print{h1{break-before:page;page-break-before:always;margin-top:0;padding-top:0;}body{font-size:12pt;line-height:1.5;word-spacing:normal;letter-spacing:normal;white-space:normal;}p{margin:0 0 12pt;}#editor,body{padding:0!important;min-height:0!important;}@page{margin:1in;}}</style>`;
   return `<!doctype html><html><head><title>${title}</title>${styles}</head><body>${body}</body></html>`;
 }
 
-// --- PDF Export (client-side) ---
+// --- PDF Export (server-side via AWS API) ---
 async function downloadAsPdf() {
   try {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    // Get document HTML
-    const html = getFullDocumentHtml();
-    // Add HTML to PDF (simple, one page)
-    doc.html(html, {
-      callback: function (doc) {
-        doc.save((bookTitleInput.value || 'document') + '.pdf');
-      },
-      x: 10,
-      y: 10,
-      width: 180 // fit to page width
+    const html = getFullDocumentHtml(true);
+    const filenameHint = (bookTitleInput.value || 'document').trim() || 'document';
+    const { widthTwips, heightTwips, marginTwips } = getPageSizeAndMargins();
+    const res = await fetch(`${API_BASE}/export/pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        html,
+        filenameHint,
+        pageSize: { width: widthTwips, height: heightTwips },
+        margins: { top: marginTwips, right: marginTwips, bottom: marginTwips, left: marginTwips }
+      })
     });
+    if (!res.ok) throw new Error(`PDF export failed: ${await res.text()}`);
+    const data = await res.json();
+    window.open(data.url, '_blank');
   } catch (err) {
-    console.error('PDF export failed (client):', err);
-    alert('PDF export failed. Error: ' + err.message);
+    alert('PDF export failed. Please try again.');
+    console.error(err);
   }
 }
 
-// --- DOCX Export (server-side via API) ---
+// --- DOCX Export (server-side via AWS API) ---
+function mmToInches(mm) { return mm / 25.4; }
+function inToTwips(inches) { return Math.round(inches * 1440); }
+function getPageSizeAndMargins() {
+  let size = globalCanvasSize || { width: 8.5, height: 11, unit: 'in' };
+  let widthIn = size.width;
+  let heightIn = size.height;
+  let marginIn = 1;
+  if (size.unit === 'mm') {
+    widthIn = mmToInches(size.width);
+    heightIn = mmToInches(size.height);
+  }
+  // Standard margins by size
+  if (canvasSizeSelect.value === 'A5') marginIn = 0.75;
+  if (canvasSizeSelect.value === 'Custom' && customUnitSelect.value === 'mm') marginIn = 0.75;
+  if (canvasSizeSelect.value === 'Custom' && customUnitSelect.value === 'in') marginIn = 1;
+  return {
+    widthTwips: inToTwips(widthIn),
+    heightTwips: inToTwips(heightIn),
+    marginTwips: inToTwips(marginIn)
+  };
+}
+
 async function downloadAsDocx() {
   try {
     const html = getFullDocumentHtml(true);
     const filenameHint = (bookTitleInput.value || 'document').trim() || 'document';
+    const { widthTwips, heightTwips, marginTwips } = getPageSizeAndMargins();
     const res = await fetch(`${API_BASE}/export/docx`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ html, filenameHint })
+      body: JSON.stringify({
+        html,
+        filenameHint,
+        pageSize: { width: widthTwips, height: heightTwips },
+        margins: { top: marginTwips, right: marginTwips, bottom: marginTwips, left: marginTwips }
+      })
     });
     if (!res.ok) throw new Error(`DOCX export failed: ${await res.text()}`);
-    const data = await res.json();      // expects: { url: "https://s3..." }
-    window.open(data.url, '_blank');    // or: window.location.href = data.url;
+    const data = await res.json();
+    window.open(data.url, '_blank');
   } catch (err) {
     alert('DOCX export failed. Please try again.');
     console.error(err);
@@ -429,10 +423,7 @@ async function downloadAsDocx() {
 
   // --- Download dropdown / modal basics ---
   function handleDownloadClick() {
-    if (userStatus !== 'subscribed') {
-      subscribeModal.classList.remove('hidden');
-      return;
-    }
+    // Removed login/subscription check
     downloadOptionsMenu.classList.toggle('hidden');
     downloadDropdownButton.parentElement.classList.toggle('open');
   }
@@ -690,5 +681,47 @@ function triggerDownload(blob, filename) {
     URL.revokeObjectURL(url);
   }, 100);
 }
+
+// --- Search and Replace (global) ---
+function handleSearchReplace() {
+  const searchInput = document.getElementById('search-word');
+  const replaceInput = document.getElementById('replace-word');
+  const searchWord = searchInput.value;
+  const replaceWord = replaceInput.value;
+  if (!searchWord) return;
+  // Replace in all sectionContents
+  Object.keys(sectionContents).forEach(section => {
+    if (sectionContents[section]) {
+      // Use regex for global, case-insensitive replace
+      const re = new RegExp(searchWord, 'gi');
+      sectionContents[section] = sectionContents[section].replace(re, replaceWord);
+    }
+  });
+  // If editing, update editor content
+  if (activeSection && editor.innerHTML) {
+    const re = new RegExp(searchWord, 'gi');
+    editor.innerHTML = editor.innerHTML.replace(re, replaceWord);
+  }
+  saveProject();
+  updateWordCount();
+  alert(`All occurrences of "${searchWord}" replaced with "${replaceWord}".`);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const bar = document.getElementById('search-replace-bar');
+  if (bar) {
+    const searchReplaceDiv = document.createElement('div');
+    searchReplaceDiv.style.display = 'inline-block';
+    searchReplaceDiv.innerHTML = `
+      <label>Search & Replace:&nbsp;
+        <input type="text" id="search-word" placeholder="Find..." style="width:100px;">
+        <input type="text" id="replace-word" placeholder="Replace with..." style="width:120px;">
+        <button id="search-replace-btn">Replace All</button>
+      </label>
+    `;
+    bar.appendChild(searchReplaceDiv);
+    document.getElementById('search-replace-btn').addEventListener('click', handleSearchReplace);
+  }
+});
 
 
