@@ -17,9 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const structureList = document.getElementById('book-structure-list');
   const addSectionButton = document.getElementById('add-section-button');
 
-  const setBackgroundButton = document.getElementById('set-background-button');
-  const clearBackgroundButton = document.getElementById('clear-background-button');
-  const backgroundFileInput = document.getElementById('background-file-input');
+  // Background controls removed from UI
+  const setBackgroundButton = null;
+  const clearBackgroundButton = null;
+  const backgroundFileInput = null;
 
   const uploadManuscriptButton = document.getElementById('upload-manuscript-button');
   const manuscriptFileInput = document.getElementById('manuscript-file-input');
@@ -268,20 +269,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- Background image ---
-  function handleSetBackgroundClick() { backgroundFileInput.click(); }
-  function handleFileSelect(e) {
-    const file = e.target.files[0];
-    if (!file || !file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      editor.style.backgroundImage = `url('${ev.target.result}')`;
-      editor.style.backgroundSize = 'cover';
-      editor.style.backgroundRepeat = 'no-repeat';
-      editor.style.backgroundPosition = 'center';
-    };
-    reader.readAsDataURL(file);
-  }
-  function handleClearBackgroundClick() { editor.style.backgroundImage = 'none'; }
+  function handleSetBackgroundClick() { /* removed */ }
+  function handleFileSelect(e) { /* removed */ }
+  function handleClearBackgroundClick() { /* removed */ }
 
   // --- Inspiration Station ---
   function getInspiration() {
@@ -729,9 +719,7 @@ async function downloadAsDocx() {
   structureList.addEventListener('contextmenu', handleOutlineContextMenu);
   addSectionButton.addEventListener('click', addNewSection);
 
-  setBackgroundButton.addEventListener('click', handleSetBackgroundClick);
-  clearBackgroundButton.addEventListener('click', handleClearBackgroundClick);
-  backgroundFileInput.addEventListener('change', handleFileSelect);
+  // Background buttons removed; no wiring needed
 
   uploadManuscriptButton.addEventListener('click', handleManuscriptClick);
   manuscriptFileInput.addEventListener('change', handleManuscriptFile);
@@ -808,14 +796,46 @@ async function downloadAsDocx() {
   });
 
   // editor word count
+  // Confetti spray when goal reached
+  let confettiFiredForGoal = false;
+  function fireConfetti() {
+    try {
+      if (window.confetti) {
+        const end = Date.now() + 600; // ~0.6s burst
+        const colors = ['#a1866f', '#8f7762', '#bfa98a', '#8c6f5a', '#c7b9a4'];
+        (function frame() {
+          window.confetti({
+            particleCount: 80,
+            spread: 70,
+            startVelocity: 45,
+            ticks: 200,
+            gravity: 0.9,
+            colors
+          });
+          if (Date.now() < end) requestAnimationFrame(frame);
+        })();
+      }
+    } catch {}
+  }
   function updateWordCount() {
     const text = editor.innerText || '';
     const words = text.trim().length ? text.trim().split(/\s+/).length : 0;
     const goal = parseInt(goalInput.value || '0', 10) || 0;
     wordCountDisplay.textContent = `${words} / ${goal}`;
+    if (goal > 0) {
+      if (!confettiFiredForGoal && words >= goal) {
+        confettiFiredForGoal = true;
+        fireConfetti();
+        showToast('Goal reached — amazing work!', 'success', 'Milestone');
+      } else if (confettiFiredForGoal && words < goal) {
+        confettiFiredForGoal = false;
+      }
+    } else {
+      confettiFiredForGoal = false;
+    }
   }
   editor.addEventListener('input', updateWordCount);
-  goalInput.addEventListener('change', updateWordCount);
+  goalInput.addEventListener('change', () => { confettiFiredForGoal = false; updateWordCount(); });
 
   // Delete project
   if (deleteProjectButton) deleteProjectButton.addEventListener('click', deleteProject);
